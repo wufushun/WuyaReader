@@ -1,0 +1,100 @@
+<resources>
+
+    <string name="app_name">Wuya Reader</string>
+    <string name="href">访问地址</string>
+    <string name="progress">进度</string>
+    <string name="hint">提示</string>
+    <string name="wifiOn">wifi on</string>
+    <string name="wifiOff">wifi off</string>
+    <string name="title_activity_wuya">乌鸦读书</string>
+    <string name="title_localFile">本地文件</string>
+    <string name="title_webPage">浏览</string>
+    <string name="title_settings">设置</string>
+    <string name="title_play">播放</string>
+    <string name="title_pause">暂停</string>
+    <string name="title_sound_switch">声音切换</string>
+    <string name="title_sound_up">音量+</string>
+    <string name="title_sound_down">音量-</string>
+    <string name="title_forward">前进</string>
+    <string name="title_rewind">后退</string>
+    <string name="title_activity_settings">设置</string>
+
+    <!-- Strings related to Settings -->
+
+    <!-- 百度语音 settings -->
+    <string name="pref_header_baidu">百度语音</string>
+
+    <string name="pref_title_online_speaker">在线发音人</string>
+    <string name="pref_default_online_speaker">0</string>
+    <string-array name="pref_online_speaker_titles">
+        <item>普通女声（默认）</item>
+        <item>普通男声</item>
+        <item>特别男声</item>
+        <item>情感男声(度逍遥)</item>
+        <item>情感儿童声(度丫丫)</item>
+    </string-array>
+    <string-array name="pref_online_speaker_values">
+        <item>0</item>
+        <item>1</item>
+        <item>2</item>
+        <item>3</item>
+        <item>4</item>
+    </string-array>
+    <string name="pref_title_offline_speaker">离线发音人</string>
+    <string name="pref_default_offline_speaker">F</string>
+    <string-array name="pref_offline_speaker_titles">
+        <item>离线男声</item>
+        <item>离线女声</item>
+    </string-array>
+    <string-array name="pref_offline_speaker_values">
+        <item>M</item>
+        <item>F</item>
+    </string-array>
+    <string name="pref_title_volume">音量</string>
+    <string name="pref_default_volume">5</string>
+
+    <string name="pref_title_speed">语速</string>
+    <string name="pref_default_speed">5</string>
+
+    <string name="pref_title_pitch">语调</string>
+    <string name="pref_default_pitch">5</string>
+
+    <string-array name="pref_general_number_titles">
+        <item>1</item>
+        <item>2</item>
+        <item>3</item>
+        <item>4</item>
+        <item>5</item>
+        <item>6</item>
+        <item>7</item>
+        <item>8</item>
+        <item>9</item>
+    </string-array>
+    <string-array name="pref_general_number_values">
+        <item>1</item>
+        <item>2</item>
+        <item>3</item>
+        <item>4</item>
+        <item>5</item>
+        <item>6</item>
+        <item>7</item>
+        <item>8</item>
+        <item>9</item>
+    </string-array>
+
+    <!-- 网站 settings -->
+    <string name="pref_header_website">网站设置</string>
+
+    <string name="pref_title_encoding">编码格式</string>
+    <string name="pref_default_encoding">UTF-8</string>
+    <string-array name="pref_encoding_titles">
+        <item>UTF-8</item>
+        <item>GB2312</item>
+        <item>GBK</item>
+    </string-array>
+    <string-array name="pref_encoding_values">
+        <item>UTF-8</item>
+        <item>GB2312</item>
+        <item>GBK</item>
+    </string-array>
+</resources>

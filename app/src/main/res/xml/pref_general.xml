@@ -1,0 +1,46 @@
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- NOTE: Hide buttons to simplify the UI. Users can touch outside the dialog to
+         dismiss it. -->
+    <!-- NOTE: ListPreference's summary should be set to its value by the activity code. -->
+    <ListPreference
+        android:defaultValue="@string/pref_default_online_speaker"
+        android:entries="@array/pref_online_speaker_titles"
+        android:entryValues="@array/pref_online_speaker_values"
+        android:key="online_speaker"
+        android:negativeButtonText="@null"
+        android:positiveButtonText="@null"
+        android:title="@string/pref_title_online_speaker" />
+    <ListPreference
+        android:defaultValue="@string/pref_default_offline_speaker"
+        android:entries="@array/pref_offline_speaker_titles"
+        android:entryValues="@array/pref_offline_speaker_values"
+        android:key="offline_speaker"
+        android:negativeButtonText="@null"
+        android:positiveButtonText="@null"
+        android:title="@string/pref_title_online_speaker" />
+    <ListPreference
+        android:defaultValue="@string/pref_default_volume"
+        android:entries="@array/pref_general_number_titles"
+        android:entryValues="@array/pref_general_number_values"
+        android:key="volume"
+        android:negativeButtonText="@null"
+        android:positiveButtonText="@null"
+        android:title="@string/pref_title_volume" />
+    <ListPreference
+        android:defaultValue="@string/pref_default_speed"
+        android:entries="@array/pref_general_number_titles"
+        android:entryValues="@array/pref_general_number_values"
+        android:key="speed"
+        android:negativeButtonText="@null"
+        android:positiveButtonText="@null"
+        android:title="@string/pref_title_speed" />
+    <ListPreference
+        android:defaultValue="@string/pref_default_pitch"
+        android:entries="@array/pref_general_number_titles"
+        android:entryValues="@array/pref_general_number_values"
+        android:key="pitch"
+        android:negativeButtonText="@null"
+        android:positiveButtonText="@null"
+        android:title="@string/pref_title_pitch" />
+</PreferenceScreen>

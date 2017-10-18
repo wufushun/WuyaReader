@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item
+        android:id="@+id/play_pause"
+        android:icon="@drawable/play_48"
+        android:title="@string/title_play" />
+
+    <item
+        android:id="@+id/forward"
+        android:icon="@drawable/forward_48"
+        android:title="@string/title_forward" />
+
+    <item
+        android:id="@+id/rewind"
+        android:icon="@drawable/rewind_48"
+        android:title="@string/title_rewind" />
+
+    <item
+        android:id="@+id/settings"
+        android:icon="@drawable/settings_48"
+        android:title="@string/title_settings" />
+
+</menu>

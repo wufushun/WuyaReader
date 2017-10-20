@@ -5,7 +5,6 @@ import android.app.Activity;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
-import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -17,12 +16,8 @@ import android.support.design.widget.BottomNavigationView;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
-import android.text.Layout;
-import android.text.Spannable;
-import android.text.SpannableString;
 import android.text.TextUtils;
 import android.text.method.ScrollingMovementMethod;
-import android.text.style.ForegroundColorSpan;
 import android.util.Pair;
 import android.view.MenuItem;
 import android.view.View;
@@ -39,7 +34,9 @@ import com.wuya.reader.control.MySyntherizer;
 import com.wuya.reader.control.NonBlockSyntherizer;
 import com.wuya.reader.listener.UiMessageListener;
 import com.wuya.reader.util.FileUtil;
+import com.wuya.reader.util.HtmlContentUtil;
 import com.wuya.reader.util.HttpUtil;
+import com.wuya.reader.util.HttpsUtil;
 import com.wuya.reader.util.OfflineResource;
 import com.wuya.reader.util.PreferenceUtil;
 
@@ -58,7 +55,7 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
     private ImageButton btnLocalFile;
     private SeekBar processSeekBar;
 
-    private EditText textProgress;
+    private TextView textProgress;
 
     private BottomNavigationView navigation;
 
@@ -72,6 +69,8 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
     private static String unfinishedContent="";
 
     private static String finishedContent="";
+
+    private String nextUrl = "";
 
     private final static int PLAY_NORMAL = 0;
     private final static int PLAY_FORWARD = 1;
@@ -125,25 +124,10 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
 
         };
 
+        HttpsUtil.initHttpsUrlConnection(this);
+
         initialTts(); // 初始化TTS引擎
     }
-
-    @Override
-    protected void onDestroy() {
-        //记住最后的文章和位置
-        rememberSkip();
-        synthesizer.release();
-        super.onDestroy();
-    }
-
-    private void rememberSkip() {
-        SharedPreferences userSettings = getSharedPreferences(PreferenceUtil.PREFERENCE_NAME, 0);
-        SharedPreferences.Editor editor = userSettings.edit();
-        editor.putLong(hrefEdit.getText().toString(),skipLength);
-        editor.putString("lastFile",hrefEdit.getText().toString());
-        editor.commit();
-    }
-
 
     private BottomNavigationView.OnNavigationItemSelectedListener mOnNavigationItemSelectedListener
             = new BottomNavigationView.OnNavigationItemSelectedListener() {
@@ -159,23 +143,26 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
                         Map<String, String> params = getParams();
                         synthesizer.setParams(params);
                         loadModel();
-                        readResult(PLAY_NORMAL);
+
+                        speak();
                     }
                     else {
+                        stop();
                         item.setTitle(R.string.title_play);
                         item.setIcon(R.drawable.play_48);
-                        stop();
                     }
                     //通知系统更新菜单
                     supportInvalidateOptionsMenu();
                     return true;
                 case R.id.forward:
-                    readResult(PLAY_FORWARD);
+                    stop();
+                    nextSentence();
                     navigation.getMenu().getItem(0).setTitle(R.string.title_play);
                     navigation.getMenu().getItem(0).setIcon(R.drawable.play_48);
                     return true;
                 case R.id.rewind:
-                    readResult(PLAY_REWIND);
+                    stop();
+                    prevSentence();
                     navigation.getMenu().getItem(0).setTitle(R.string.title_play);
                     navigation.getMenu().getItem(0).setIcon(R.drawable.play_48);
                     return true;
@@ -246,18 +233,43 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
         checkResult(result, "loadModel");
     }
 
+    //启动时加载最后的记录
     private void loadLastFile() {
         SharedPreferences userSettings = getSharedPreferences(PreferenceUtil.PREFERENCE_NAME, 0);
         String lastFile = userSettings.getString("lastFile","");
         hrefEdit.setText(lastFile);
         if (!lastFile.isEmpty()) {
             skipLength = userSettings.getLong(lastFile,0);
-            if (skipLength>0) {
+            if (lastFile.contains("http://") || lastFile.contains("https://")) {
+                browseMode = BROWSE_WEB;
+                browseWebPage(lastFile);
+            }
+            else {
                 browseMode = BROWSE_FOLDER;
                 readFile(skipLength,READ_LENGTH);
             }
         }
     }
+
+    @Override
+    protected void onDestroy() {
+        //记住最后的文章和位置
+        rememberSkip();
+        synthesizer.release();
+        super.onDestroy();
+    }
+
+    private void rememberSkip() {
+        SharedPreferences userSettings = getSharedPreferences(PreferenceUtil.PREFERENCE_NAME, 0);
+        SharedPreferences.Editor editor = userSettings.edit();
+        if(browseMode == BROWSE_WEB) {
+            skipLength = finishedContent.length();
+        }
+        editor.putLong(hrefEdit.getText().toString(),skipLength);
+        editor.putString("lastFile",hrefEdit.getText().toString());
+        editor.commit();
+    }
+
 
     /**
      * 界面上的按钮对应方法
@@ -267,13 +279,14 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
         int id = v.getId();
         switch (id) {
             case R.id.webPage:
+                stop();
                 browseMode = BROWSE_WEB;
                 String url = hrefEdit.getText().toString();
                 skipLength = 0;
-                rememberSkip();
                 browseWebPage(url);
                 break;
             case R.id.localFile:
+                stop();
                 browseMode = BROWSE_FOLDER;
                 rememberSkip();
                 Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
@@ -286,22 +299,38 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
     }
 
     private void browseWebPage(String url) {
-        url = "http://"+url.replace("http://","");
+        unfinishedContent = "";
+        finishedContent = "";
+        fileSize = 1;
+        processSeekBar.setVisibility(View.INVISIBLE);
+        textProgress.setVisibility(View.INVISIBLE);
+        if (url.contains("http://") || url.contains("https://")) {
+        }
+        else {
+            url = "http://"+url;
+        }
         String encoding = PreferenceManager.getDefaultSharedPreferences(this).getString("encoding","UTF-8");
 
         HttpUtil.doGetAsyn(url, encoding, new HttpUtil.CallBack() {
             @Override
             public void onRequestComplete(String result) {
-                if (result.contains("<body")) {
-                    result = result.substring(result.indexOf("<body")+5);
-                    result = result.replaceAll("[a-zA-Z]|[._<>=\"-/:_';]","");
+                Map<String, String> resultMap = HtmlContentUtil.getHtmlContent(hrefEdit.getText().toString(),result);
+                String content = resultMap.get("orientContent");
+                nextUrl = resultMap.get("nextUrl");
+                if (skipLength>0) {
+                    unfinishedContent = content.substring((int)skipLength);
+                    finishedContent = content.substring(0,(int)skipLength+1);
                 }
-                unfinishedContent = result;
-                finishedContent = "";
+                else {
+                    unfinishedContent = content;
+                    finishedContent = "";
+                }
+
                 mainHandler.sendMessage(mainHandler.obtainMessage(UI_SPEECH_TEXT_FINISHED));
             }
         });
     }
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         Uri uri = data.getData();
@@ -317,6 +346,8 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
 
 
     private void readFile(long position,int length) {
+        processSeekBar.setVisibility(View.VISIBLE);
+        textProgress.setVisibility(View.VISIBLE);
         Map<String,String> result = FileUtil.openTextFile(hrefEdit.getText().toString(), position,length);
         skipLength = Long.parseLong(result.get("skip"));
         fileSize = Long.parseLong(result.get("fileSize"));
@@ -326,53 +357,6 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
             finishedContent = "";
         }
         mainHandler.sendMessage(mainHandler.obtainMessage(UI_SPEECH_TEXT_FINISHED));
-
-    }
-
-    private void readResult(int flag) {
-        switch (flag) {
-            case PLAY_NORMAL:
-                if (!TextUtils.isEmpty(mInput.getText())) {
-                    speak();
-                    break;
-                }
-
-                if(unfinishedContent.contains("。")) {
-                    String sentence = unfinishedContent.substring(0, unfinishedContent.indexOf("。")+1);
-                    mInput.setText(sentence);
-                    speak();
-                    unfinishedContent = unfinishedContent.substring(unfinishedContent.indexOf("。")+1);
-                    finishedContent += sentence;
-                }
-                else {
-                    mInput.setText(unfinishedContent);
-                    speak();
-                    finishedContent += unfinishedContent;
-                    unfinishedContent = "";
-                }
-                break;
-            case PLAY_FORWARD:
-                stop();
-                if(unfinishedContent.contains("。")) {
-                    String sentence = unfinishedContent.substring(0, unfinishedContent.indexOf("。")+1);
-                    mInput.setText(sentence);
-                    unfinishedContent = unfinishedContent.substring(unfinishedContent.indexOf("。")+1);
-                    finishedContent += sentence;
-                }
-                break;
-            case PLAY_REWIND:
-                stop();
-                if(finishedContent.contains("。")) {
-                    String temp = finishedContent.substring(0,finishedContent.length()-2);
-                    String sentence = finishedContent.substring(temp.lastIndexOf("。")+1);
-                    mInput.setText(sentence);
-                    finishedContent = finishedContent.substring(0,temp.lastIndexOf("。")+1);
-                    unfinishedContent = sentence+unfinishedContent;
-                }
-                break;
-
-        }
-
 
     }
 
@@ -408,6 +392,11 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
             result = synthesizer.batchSpeak(texts);
         }
 
+        if (navigation.getMenu().getItem(0).getTitle().equals(getResources().getString(R.string.title_play))) {
+            navigation.getMenu().getItem(0).setTitle(R.string.title_pause);
+            navigation.getMenu().getItem(0).setIcon(R.drawable.pause_48);
+        }
+
         result = synthesizer.speak(text);
         checkResult(result, "speak");
     }
@@ -416,23 +405,6 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
         if (result != 0) {
             toPrint("error code :" + result + " method:" + method);
         }
-    }
-
-
-    /**
-     * 暂停播放。仅调用speak后生效
-     */
-    private void pause() {
-        int result = synthesizer.pause();
-        checkResult(result, "pause");
-    }
-
-    /**
-     * 继续播放。仅调用speak后生效，调用pause生效
-     */
-    private void resume() {
-        int result = synthesizer.resume();
-        checkResult(result, "resume");
     }
 
     /*
@@ -457,68 +429,88 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
                 break;
         }
         switch (msg.what) {
-            case PRINT:
-                print(msg);
-                break;
-            case UI_CHANGE_INPUT_TEXT_SELECTION:
-                if (msg.arg1 <= mInput.getText().length()) {
-                    mInput.setSelection(0, msg.arg1);
-                }
-                break;
-            case UI_CHANGE_SYNTHES_TEXT_SELECTION:
-                SpannableString colorfulText = new SpannableString(mInput.getText().toString());
-                if (msg.arg1 <= colorfulText.toString().length()) {
-                    colorfulText.setSpan(new ForegroundColorSpan(Color.GRAY), 0, msg.arg1, Spannable
-                            .SPAN_EXCLUSIVE_EXCLUSIVE);
-                    mInput.setText(colorfulText);
-                }
-                break;
+//            case PRINT:
+//                print(msg);
+//                break;
+//            case UI_CHANGE_INPUT_TEXT_SELECTION:
+//                if (msg.arg1 <= mInput.getText().length()) {
+//                    mInput.setSelection(0, msg.arg1);
+//                }
+//                break;
+//            case UI_CHANGE_SYNTHES_TEXT_SELECTION:
+//                SpannableString colorfulText = new SpannableString(mInput.getText().toString());
+//                if (msg.arg1 <= colorfulText.toString().length()) {
+//                    colorfulText.setSpan(new ForegroundColorSpan(Color.GRAY), 0, msg.arg1, Spannable
+//                            .SPAN_EXCLUSIVE_EXCLUSIVE);
+//                    mInput.setText(colorfulText);
+//                }
+//                break;
             case UI_SPEECH_TEXT_FINISHED:
-                if(unfinishedContent.length()==0) {
-                    if (browseMode == BROWSE_FOLDER) {
-                        readFile(skipLength, READ_LENGTH);
-
-                        if (unfinishedContent.length()==0) {
-                            stop();
-                            if (navigation.getMenu().getItem(0).getTitle().equals(getResources().getString(R.string.title_pause))) {
-                                navigation.getMenu().getItem(0).setTitle(R.string.title_play);
-                                navigation.getMenu().getItem(0).setIcon(R.drawable.play_48);
-                            }
-                        }
-                    }
-                    else {
-                        //自动读取下一篇文章，适用于文章顺序排列的场景，可能需要根据不同的url进行定制
-                        String url = hrefEdit.getText().toString();
-                        String path = url.substring(0,url.lastIndexOf("/")+1);
-                        String filename = url.substring(url.lastIndexOf("/")+1,url.lastIndexOf("."));
-                        String newUrl = path+(Integer.parseInt(filename)+1)+url.substring(url.lastIndexOf("."));
-                        hrefEdit.setText(newUrl);
-                        rememberSkip();
-                        browseWebPage(newUrl);
-                    }
-                    break;
-                }
-                if(unfinishedContent.contains("。")) {
-                    String sentence = unfinishedContent.substring(0, unfinishedContent.indexOf("。")+1);
-
-                    mInput.setText(sentence);
+                nextSentence();
+                if(!mInput.getText().toString().isEmpty()) {
                     speak();
-                    unfinishedContent = unfinishedContent.substring(unfinishedContent.indexOf("。")+1);
-                    finishedContent += sentence;
-                }
-                else {
-                    mInput.setText(unfinishedContent);
-                    speak();
-                    finishedContent += unfinishedContent;
-                    unfinishedContent = "";
-                }
-                if (navigation.getMenu().getItem(0).getTitle().equals(getResources().getString(R.string.title_play))) {
-                    navigation.getMenu().getItem(0).setTitle(R.string.title_pause);
-                    navigation.getMenu().getItem(0).setIcon(R.drawable.pause_48);
                 }
                 break;
             default:
                 break;
+        }
+    }
+
+    //下一句
+    private void nextSentence() {
+        if(unfinishedContent.length()==0) {
+            mInput.setText("");
+            if (browseMode == BROWSE_FOLDER) {
+                readFile(skipLength, READ_LENGTH);
+
+                if (unfinishedContent.length() == 0) {
+                    stop();
+                    if (navigation.getMenu().getItem(0).getTitle().equals(getResources().getString(R.string.title_pause))) {
+                        navigation.getMenu().getItem(0).setTitle(R.string.title_play);
+                        navigation.getMenu().getItem(0).setIcon(R.drawable.play_48);
+                    }
+                }
+            } else {
+                if (!nextUrl.isEmpty()) {
+                    hrefEdit.setText(nextUrl);
+                    browseWebPage(nextUrl);
+                }
+            }
+        }
+        else {
+            if (unfinishedContent.contains("。")) {
+                String sentence = unfinishedContent.substring(0, unfinishedContent.indexOf("。") + 1);
+
+                mInput.setText(sentence);
+                unfinishedContent = unfinishedContent.substring(unfinishedContent.indexOf("。") + 1);
+                finishedContent += sentence;
+            } else {
+                mInput.setText(unfinishedContent);
+                finishedContent += unfinishedContent;
+                unfinishedContent = "";
+            }
+        }
+        if(finishedContent.length()>0) {
+            navigation.getMenu().getItem(2).setEnabled(true);
+        }
+    }
+
+    //上一句
+    private void prevSentence() {
+        if(finishedContent.contains("。")) {
+            String temp = finishedContent.substring(0,finishedContent.lastIndexOf("。"));
+            String sentence = finishedContent.substring(temp.lastIndexOf("。")+1)+"。";
+            mInput.setText(sentence);
+            finishedContent = finishedContent.substring(0,temp.lastIndexOf("。")+1);
+            unfinishedContent = sentence+unfinishedContent;
+        }
+        else {
+            mInput.setText(finishedContent);
+            unfinishedContent = finishedContent+unfinishedContent;
+            finishedContent = "";
+        }
+        if(finishedContent.length()==0) {
+            navigation.getMenu().getItem(2).setEnabled(false);
         }
     }
 
@@ -531,12 +523,14 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
         btnLocalFile.setEnabled(false);
 
         mInput = (EditText) this.findViewById(R.id.input);
+        mInput.setEnabled(false);
         hrefEdit = (EditText) findViewById(R.id.href);
 
         mShowText = (TextView) this.findViewById(R.id.showText);
         mShowText.setMovementMethod(new ScrollingMovementMethod());
+        mShowText.setVisibility(View.INVISIBLE);
 
-        textProgress = (EditText) this.findViewById(R.id.textProgress);
+        textProgress = (TextView) this.findViewById(R.id.textProgress);
 
         processSeekBar = (SeekBar) findViewById(R.id.progressSeekBar);
         processSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){
@@ -578,28 +572,28 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
         mainHandler.sendMessage(msg);
     }
 
-    private void print(Message msg) {
-        String message = (String) msg.obj;
-        if (message != null) {
-            scrollLog(message);
-        }
-    }
-
-    private void scrollLog(String message) {
-        Spannable colorMessage = new SpannableString(message + "\n");
-        colorMessage.setSpan(new ForegroundColorSpan(0xff0000ff), 0, message.length(),
-                Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-        mShowText.append(colorMessage);
-        Layout layout = mShowText.getLayout();
-        if (layout != null) {
-            int scrollAmount = layout.getLineTop(mShowText.getLineCount()) - mShowText.getHeight();
-            if (scrollAmount > 0) {
-                mShowText.scrollTo(0, scrollAmount + mShowText.getCompoundPaddingBottom());
-            } else {
-                mShowText.scrollTo(0, 0);
-            }
-        }
-    }
+//    private void print(Message msg) {
+//        String message = (String) msg.obj;
+//        if (message != null) {
+//            scrollLog(message);
+//        }
+//    }
+//
+//    private void scrollLog(String message) {
+//        Spannable colorMessage = new SpannableString(message + "\n");
+//        colorMessage.setSpan(new ForegroundColorSpan(0xff0000ff), 0, message.length(),
+//                Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+//        mShowText.append(colorMessage);
+//        Layout layout = mShowText.getLayout();
+//        if (layout != null) {
+//            int scrollAmount = layout.getLineTop(mShowText.getLineCount()) - mShowText.getHeight();
+//            if (scrollAmount > 0) {
+//                mShowText.scrollTo(0, scrollAmount + mShowText.getCompoundPaddingBottom());
+//            } else {
+//                mShowText.scrollTo(0, 0);
+//            }
+//        }
+//    }
 
     /**
      * android 6.0 以上需要动态申请权限

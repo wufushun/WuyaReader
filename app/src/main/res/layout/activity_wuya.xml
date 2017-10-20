@@ -33,12 +33,14 @@
                     android:id="@+id/webPage"
                     android:layout_width="30dp"
                     android:layout_height="30dp"
+                    android:layout_margin="2dp"
                     app:srcCompat="@drawable/browser" />
 
                 <ImageButton
                     android:id="@+id/localFile"
                     android:layout_width="30dp"
                     android:layout_height="30dp"
+                    android:layout_margin="2dp"
                     app:srcCompat="@drawable/folder_48" />
             </LinearLayout>
             <LinearLayout
@@ -49,17 +51,17 @@
             <EditText
                 android:id="@+id/input"
                 android:layout_width="fill_parent"
-                android:minLines="10"
-                android:maxLines="10"
+                android:minLines="15"
+                android:maxLines="15"
                 android:layout_height="wrap_content"
-                android:hint="input" />
+                android:hint="" />
             <TextView
                 android:id="@+id/showText"
                 android:layout_width="fill_parent"
                 android:layout_height="wrap_content"
                 android:layout_margin="10dp"
-                android:minLines="2"
-                android:maxLines="2"
+                android:minLines="1"
+                android:maxLines="3"
                 android:hint="@string/hint"
                 android:scrollbars="vertical" />
             <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
@@ -71,7 +73,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"/>
-                <EditText
+                <TextView
                     android:id="@+id/textProgress"
                     android:layout_width="30dp"
                     android:layout_height="wrap_content"/>

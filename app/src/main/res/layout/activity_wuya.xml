@@ -30,16 +30,26 @@
                     android:layout_weight="1"/>
 
                 <ImageButton
+                    android:id="@+id/go"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:background="@android:color/transparent"
+                    android:layout_margin="2dp"
+                    app:srcCompat="@drawable/go_48" />
+
+                <ImageButton
                     android:id="@+id/webPage"
-                    android:layout_width="30dp"
-                    android:layout_height="30dp"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:background="@android:color/transparent"
                     android:layout_margin="2dp"
                     app:srcCompat="@drawable/browser" />
 
                 <ImageButton
                     android:id="@+id/localFile"
-                    android:layout_width="30dp"
-                    android:layout_height="30dp"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:background="@android:color/transparent"
                     android:layout_margin="2dp"
                     app:srcCompat="@drawable/folder_48" />
             </LinearLayout>
@@ -48,11 +58,11 @@
                 android:layout_height="0px"
                 android:focusable="true"
                 android:focusableInTouchMode="true" />
-            <EditText
+            <TextView
                 android:id="@+id/input"
                 android:layout_width="fill_parent"
-                android:minLines="15"
-                android:maxLines="15"
+                android:minLines="12"
+                android:maxLines="12"
                 android:layout_height="wrap_content"
                 android:hint="" />
             <TextView

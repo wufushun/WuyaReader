@@ -13,6 +13,9 @@ public class HtmlContentUtil {
         if (url.contains("www.biqudao.com")) {
             return getBiqudaoContent(url,orientContent);
         }
+        else if (url.contains("m.biqudao.com")) {
+            return getMBiqudaoContent(url,orientContent);
+        }
         //零点看书
         else if (url.contains("m.lingdiankanshu.co")) {
             return getLingdiankanshuContent(url,orientContent);
@@ -20,6 +23,9 @@ public class HtmlContentUtil {
         //17k
         else if (url.contains("www.17k.com")) {
             return get17KContent(url,orientContent);
+        }
+        else if (url.contains("h5.17k.com")) {
+            return getH517KContent(url,orientContent);
         }
         //红袖添香
         else if (url.contains("www.hongxiu.com")) {
@@ -29,8 +35,11 @@ public class HtmlContentUtil {
         else if (url.contains("www.quanshuwang.com")) {
             return getQuanshuContent(url,orientContent);
         }
+        else if (url.contains("m.quanshuwang.com")) {
+            return getMQuanshuContent(url,orientContent);
+        }
         //书书吧，主要是一些经典小说都有
-        else if (url.contains("www.shushu8.com")) {
+        else if (url.contains("shushu8.com")) {
             return getShushu8Content(url,orientContent);
         }
         //99藏书
@@ -70,12 +79,41 @@ public class HtmlContentUtil {
             orientContent = orientContent.substring(0, orientContent.indexOf("<script>chaptererror();</script>"));
         }
 
-        if (orientContent.contains("<body")) {
-            orientContent = orientContent.substring(orientContent.indexOf("<body")+5);
-        }
-        orientContent = orientContent.replaceAll("[a-zA-Z]|[._<>=\"-/:_';]","");
         result.put("nextUrl", nextUrl);
-        result.put("orientContent", orientContent);
+        result.put("orientContent", getGeneralContent(orientContent));
+        return result;
+    }
+
+    /**
+     * 笔趣岛
+     * @param url
+     * @param orientContent
+     * @return
+     */
+    private static Map<String, String> getMBiqudaoContent(String url, String orientContent) {
+        Map<String, String> result = new HashMap<String, String>(2);
+        String nextUrl = "";
+        if (orientContent.contains("<div id=\"chaptercontent\" class=\"Readarea ReadAjax_content\">")) {
+            orientContent = orientContent.substring(orientContent.indexOf("<div id=\"chaptercontent\" class=\"Readarea ReadAjax_content\">") + 59);
+        }
+        if (orientContent.contains("\" id=\"pb_next\"") && orientContent.contains("目录</a>")) {
+            String temp = orientContent.substring(orientContent.indexOf("目录</a>")+6);
+            if(temp.contains("<a href=\"")) {
+                temp = temp.substring(temp.indexOf("<a href=\"") + 9, temp.indexOf("\" id=\"pb_next\""));
+                if (temp.equals("./")) {
+                    nextUrl = url.substring(0,url.lastIndexOf("/"));
+                }
+                else {
+                    nextUrl = url.substring(0,url.lastIndexOf("/")+1)+temp;
+                }
+            }
+        }
+        if (orientContent.contains("/div>")) {
+            orientContent = orientContent.substring(0, orientContent.indexOf("/div>"));
+        }
+
+        result.put("nextUrl", nextUrl);
+        result.put("orientContent", getGeneralContent(orientContent));
         return result;
     }
 
@@ -108,9 +146,8 @@ public class HtmlContentUtil {
             orientContent = orientContent.substring(0, orientContent.indexOf("<script>app2()</script>"));
         }
 
-        orientContent = orientContent.replaceAll("[a-zA-Z]|[._<>=\"-/:_';]","");
         result.put("nextUrl", nextUrl);
-        result.put("orientContent", orientContent);
+        result.put("orientContent", getGeneralContent(orientContent));
         return result;
     }
 
@@ -131,9 +168,29 @@ public class HtmlContentUtil {
             orientContent = orientContent.substring(0, orientContent.indexOf("<div class=\"author-say\"></div>"));
         }
 
-        orientContent = orientContent.replaceAll("[a-zA-Z]|[._<>=\"-/:_';]","");
         result.put("nextUrl", nextUrl);
-        result.put("orientContent", orientContent);
+        result.put("orientContent", getGeneralContent(orientContent));
+        return result;
+    }
+    /**
+     * 17k内容，不支持自动翻页
+     * @param url
+     * @param orientContent
+     * @return
+     */
+    private static Map<String, String> getH517KContent(String url, String orientContent) {
+        Map<String, String> result = new HashMap<String, String>(2);
+        String nextUrl = "";
+
+        if (orientContent.contains("<div id=\"TextContent\">")) {
+            orientContent = orientContent.substring(orientContent.indexOf("<div id=\"TextContent\">") + 22);
+        }
+        if (orientContent.contains("<section class=\"ReadAD\" id=\"ad_gd2\"></section>")) {
+            orientContent = orientContent.substring(0, orientContent.indexOf("<section class=\"ReadAD\" id=\"ad_gd2\"></section>"));
+        }
+
+        result.put("nextUrl", nextUrl);
+        result.put("orientContent", getGeneralContent(orientContent));
         return result;
     }
 
@@ -160,9 +217,8 @@ public class HtmlContentUtil {
             orientContent = orientContent.substring(0, orientContent.indexOf("</div>"));
         }
 
-        orientContent = orientContent.replaceAll("[a-zA-Z]|[._<>=\"-/:_';]","");
         result.put("nextUrl", nextUrl);
-        result.put("orientContent", orientContent);
+        result.put("orientContent", getGeneralContent(orientContent));
         return result;
     }
 
@@ -189,9 +245,36 @@ public class HtmlContentUtil {
             orientContent = orientContent.substring(0, orientContent.indexOf("<script type=\"text/javascript\">style6();</script>"));
         }
 
-        orientContent = orientContent.replaceAll("[a-zA-Z]|[._<>=\"-/:_';]","");
         result.put("nextUrl", nextUrl);
-        result.put("orientContent", orientContent);
+        result.put("orientContent", getGeneralContent(orientContent));
+        return result;
+    }
+
+    /**
+     * 全书网
+     * @param url
+     * @param orientContent
+     * @return
+     */
+    private static Map<String, String> getMQuanshuContent(String url, String orientContent) {
+        Map<String, String> result = new HashMap<String, String>(2);
+        String nextUrl = "";
+
+        if (orientContent.contains("<div id=\"htmlContent\">")) {
+            orientContent = orientContent.substring(orientContent.indexOf("<div id=\"htmlContent\">") + 22);
+        }
+        if (orientContent.contains("var hou = \"")) {
+            String temp = orientContent.substring(orientContent.indexOf("var hou = \"")+11);
+            if(temp.contains("\";")) {
+                nextUrl = url.substring(0,url.lastIndexOf("/")+1)+temp.substring(0, temp.indexOf("\";"));
+            }
+        }
+        if (orientContent.contains("<script type=\"text/javascript\">style2();</script>")) {
+            orientContent = orientContent.substring(0, orientContent.indexOf("<script type=\"text/javascript\">style2();</script>"));
+        }
+
+        result.put("nextUrl", nextUrl);
+        result.put("orientContent", getGeneralContent(orientContent));
         return result;
     }
 
@@ -221,9 +304,39 @@ public class HtmlContentUtil {
             orientContent = orientContent.substring(0, orientContent.indexOf("<div class=\"nr_page\">"));
         }
 
-        orientContent = orientContent.replaceAll("[a-zA-Z]|[._<>=\"-/:_';]","");
         result.put("nextUrl", nextUrl);
-        result.put("orientContent", orientContent);
+        result.put("orientContent", getGeneralContent(orientContent));
+        return result;
+    }
+
+    /**
+     * 书书吧
+     * @param url
+     * @param orientContent
+     * @return
+     */
+    private static Map<String, String> getMShushu8Content(String url, String orientContent) {
+        Map<String, String> result = new HashMap<String, String>(2);
+        String nextUrl = "";
+
+        if (orientContent.contains("<div id=\"content\">")) {
+            orientContent = orientContent.substring(orientContent.indexOf("<div id=\"content\">") + 19);
+        }
+        if (orientContent.contains("目录</a></td>")) {
+            String temp = orientContent.substring(orientContent.indexOf("目录</a></td>")+11);
+            if (temp.contains("<td><a href='")) {
+                temp = temp.substring(temp.indexOf("<td><a href='")+13);
+            }
+            if(temp.contains("' title='")) {
+                nextUrl = "http://www.shushu8.com"+temp.substring(0, temp.indexOf("' title='"));
+            }
+        }
+        if (orientContent.contains("<div class=\"nr_page\">")) {
+            orientContent = orientContent.substring(0, orientContent.indexOf("<div class=\"nr_page\">"));
+        }
+
+        result.put("nextUrl", nextUrl);
+        result.put("orientContent", getGeneralContent(orientContent));
         return result;
     }
 
@@ -250,9 +363,21 @@ public class HtmlContentUtil {
             orientContent = orientContent.substring(0, orientContent.indexOf("<div class=\"page\">"));
         }
 
-        orientContent = orientContent.replaceAll("[a-zA-Z]|[._<>=\"-/:_';]","");
         result.put("nextUrl", nextUrl);
-        result.put("orientContent", orientContent);
+        result.put("orientContent", getGeneralContent(orientContent));
         return result;
+    }
+
+    /**
+     * 通用处理
+     * @param orientContent
+     * @return
+     */
+    private static String getGeneralContent(String orientContent) {
+        if (orientContent.contains("<body")) {
+            orientContent = orientContent.substring(orientContent.indexOf("<body")+5);
+        }
+        orientContent = orientContent.replaceAll("[a-zA-Z0-9]|[|\\[\\]\\^._<>=\"-/:_';@{}\\\\]","");
+        return orientContent;
     }
 }

@@ -19,12 +19,14 @@ import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
 import android.text.method.ScrollingMovementMethod;
 import android.util.Pair;
+import android.view.KeyEvent;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.SeekBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.baidu.tts.client.SpeechSynthesizer;
 import com.baidu.tts.client.SpeechSynthesizerListener;
@@ -47,12 +49,15 @@ import java.util.Map;
 
 public class WuyaActivity extends AppCompatActivity implements MainHandlerConstant,View.OnClickListener {
 
-    private EditText mInput;
+    private TextView mInput;
     private TextView mShowText;
     private Handler mainHandler;
     private EditText hrefEdit;
+
     private ImageButton btnWebPage;
     private ImageButton btnLocalFile;
+    private ImageButton btnGo
+            ;
     private SeekBar processSeekBar;
 
     private TextView textProgress;
@@ -119,6 +124,7 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
             @Override
             public void handleMessage(Message msg) {
                 super.handleMessage(msg);
+                isExit = false;
                 handle(msg);
             }
 
@@ -246,7 +252,9 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
             }
             else {
                 browseMode = BROWSE_FOLDER;
-                readFile(skipLength,READ_LENGTH);
+                if (lastFile.indexOf("file:///")==-1) {
+                    readFile(skipLength, READ_LENGTH);
+                }
             }
         }
     }
@@ -277,22 +285,46 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
     @Override
     public void onClick(View v) {
         int id = v.getId();
+        Intent intent;
+        String url = hrefEdit.getText().toString();
         switch (id) {
+            case R.id.go:
+                stop();
+                if (!url.isEmpty()) {
+                    if (url.contains("http://") || url.contains("https://")) {
+                        browseMode = BROWSE_WEB;
+                        skipLength = 0;
+                        browseWebPage(url);
+                    }
+                    else {
+                        browseMode = BROWSE_FOLDER;
+                        readFile(skipLength, READ_LENGTH);
+                    }
+                }
+
+
+                break;
             case R.id.webPage:
                 stop();
                 browseMode = BROWSE_WEB;
-                String url = hrefEdit.getText().toString();
-                skipLength = 0;
-                browseWebPage(url);
+                //打开当前页面
+                intent = new Intent(this, WebViewActivity.class);
+
+                if (!url.contains("http://") && !url.contains("http://")) {
+                    url = "";
+                }
+                intent.putExtra("url",url);
+                startActivityForResult(intent, BROWSE_WEB);
+
                 break;
             case R.id.localFile:
                 stop();
-                browseMode = BROWSE_FOLDER;
                 rememberSkip();
-                Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+                browseMode = BROWSE_FOLDER;
+                intent = new Intent(Intent.ACTION_GET_CONTENT);
                 intent.setType("text/*");//设置类型，我这里是任意类型，任意后缀的可以这样写。
                 intent.addCategory(Intent.CATEGORY_OPENABLE);
-                startActivityForResult(intent,1);
+                startActivityForResult(intent,BROWSE_FOLDER);
             default:
                 break;
         }
@@ -333,14 +365,26 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        Uri uri = data.getData();
-        if (resultCode == Activity.RESULT_OK) {
-            if (Build.VERSION.SDK_INT > Build.VERSION_CODES.KITKAT) {//4.4以后
-                hrefEdit.setText(FileUtil.getPath(this, uri));
-            }
-            SharedPreferences userSettings = getSharedPreferences(PreferenceUtil.PREFERENCE_NAME, 0);
-            skipLength = userSettings.getLong(hrefEdit.getText().toString(),0);
-            readFile(skipLength,READ_LENGTH);
+        //浏览网页结果
+        switch (requestCode) {
+            case BROWSE_FOLDER:
+                Uri uri = data.getData();
+                if (resultCode == Activity.RESULT_OK) {
+                    if (Build.VERSION.SDK_INT > Build.VERSION_CODES.KITKAT) {//4.4以后
+                        hrefEdit.setText(FileUtil.getPath(this, uri));
+                    }
+                    SharedPreferences userSettings = getSharedPreferences(PreferenceUtil.PREFERENCE_NAME, 0);
+                    skipLength = userSettings.getLong(hrefEdit.getText().toString(), 0);
+                    readFile(skipLength, READ_LENGTH);
+                }
+                break;
+            case BROWSE_WEB:
+                String url = data.getStringExtra("url");
+                if (null != url && !url.isEmpty()) {
+                    hrefEdit.setText(url);
+                    browseWebPage(url);
+                }
+                break;
         }
     }
 
@@ -371,8 +415,9 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
 
         //从光标处开始读
         int cusorPosition = mInput.getSelectionStart();
-        text = text.substring(cusorPosition);
-
+        if (cusorPosition>-1) {
+            text = text.substring(cusorPosition);
+        }
         //需要合成的文本text的长度不能超过1024个GBK字节。
         if (TextUtils.isEmpty(mInput.getText())) {
             text = "欢迎使用乌鸦读书,百度语音为你提供支持。";
@@ -391,13 +436,15 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
             texts.add(new Pair<String, String>(text, "a"+i));
             result = synthesizer.batchSpeak(texts);
         }
+        else {
+            result = synthesizer.speak(text);
+        }
 
         if (navigation.getMenu().getItem(0).getTitle().equals(getResources().getString(R.string.title_play))) {
             navigation.getMenu().getItem(0).setTitle(R.string.title_pause);
             navigation.getMenu().getItem(0).setIcon(R.drawable.pause_48);
         }
 
-        result = synthesizer.speak(text);
         checkResult(result, "speak");
     }
 
@@ -420,6 +467,7 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
             case INIT_SUCCESS:
                 btnWebPage.setEnabled(true);
                 btnLocalFile.setEnabled(true);
+                btnGo.setEnabled(true);
                 msg.what = PRINT;
                 if (fileSize==0) {
                     //加载最后播放的文件及位置
@@ -521,9 +569,13 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
         btnLocalFile = (ImageButton) findViewById(R.id.localFile);
         btnLocalFile.setOnClickListener(this);
         btnLocalFile.setEnabled(false);
+        btnGo = (ImageButton) findViewById(R.id.go);
+        btnGo.setOnClickListener(this);
+        btnGo.setEnabled(false);
 
-        mInput = (EditText) this.findViewById(R.id.input);
-        mInput.setEnabled(false);
+        mInput = (TextView) this.findViewById(R.id.input);
+//        mInput.setEnabled(false);
+//        mInput.setVerticalScrollBarEnabled(true);
         hrefEdit = (EditText) findViewById(R.id.href);
 
         mShowText = (TextView) this.findViewById(R.id.showText);
@@ -635,4 +687,28 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
         startActivity(new Intent(this, activityClass));
     }
 
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        if (keyCode == KeyEvent.KEYCODE_BACK) {
+            exit();
+            return false;
+        }
+        return super.onKeyDown(keyCode, event);
+    }
+
+    // 定义一个变量，来标识是否退出
+    private static boolean isExit = false;
+
+    private void exit() {
+        if (!isExit) {
+            isExit = true;
+            Toast.makeText(getApplicationContext(), "再按一次退出程序",
+                    Toast.LENGTH_SHORT).show();
+            // 利用handler延迟发送更改状态信息
+            mainHandler.sendEmptyMessageDelayed(0, 2000);
+        } else {
+            finish();
+            System.exit(0);
+        }
+    }
 }

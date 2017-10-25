@@ -243,9 +243,9 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
     private void loadLastFile() {
         SharedPreferences userSettings = getSharedPreferences(PreferenceUtil.PREFERENCE_NAME, 0);
         String lastFile = userSettings.getString("lastFile","");
+        skipLength = userSettings.getLong("skipLength",0);
         hrefEdit.setText(lastFile);
         if (!lastFile.isEmpty()) {
-            skipLength = userSettings.getLong(lastFile,0);
             if (lastFile.contains("http://") || lastFile.contains("https://")) {
                 browseMode = BROWSE_WEB;
                 browseWebPage(lastFile);
@@ -268,14 +268,18 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
     }
 
     private void rememberSkip() {
-        SharedPreferences userSettings = getSharedPreferences(PreferenceUtil.PREFERENCE_NAME, 0);
-        SharedPreferences.Editor editor = userSettings.edit();
-        if(browseMode == BROWSE_WEB) {
-            skipLength = finishedContent.length();
+        String url = hrefEdit.getText().toString();
+
+        if (!url.isEmpty()) {
+            SharedPreferences userSettings = getSharedPreferences(PreferenceUtil.PREFERENCE_NAME, 0);
+            SharedPreferences.Editor editor = userSettings.edit();
+            if (browseMode == BROWSE_WEB) {
+                skipLength = finishedContent.length();
+            }
+            editor.putLong("skipLength", skipLength);
+            editor.putString("lastFile", hrefEdit.getText().toString());
+            editor.commit();
         }
-        editor.putLong(hrefEdit.getText().toString(),skipLength);
-        editor.putString("lastFile",hrefEdit.getText().toString());
-        editor.commit();
     }
 
 
@@ -290,10 +294,11 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
         switch (id) {
             case R.id.go:
                 stop();
+                skipLength = 0;
+
                 if (!url.isEmpty()) {
                     if (url.contains("http://") || url.contains("https://")) {
                         browseMode = BROWSE_WEB;
-                        skipLength = 0;
                         browseWebPage(url);
                     }
                     else {
@@ -306,6 +311,7 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
                 break;
             case R.id.webPage:
                 stop();
+                rememberSkip();
                 browseMode = BROWSE_WEB;
                 //打开当前页面
                 intent = new Intent(this, WebViewActivity.class);
@@ -365,6 +371,7 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        skipLength = 0;
         //浏览网页结果
         switch (requestCode) {
             case BROWSE_FOLDER:
@@ -373,8 +380,6 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
                     if (Build.VERSION.SDK_INT > Build.VERSION_CODES.KITKAT) {//4.4以后
                         hrefEdit.setText(FileUtil.getPath(this, uri));
                     }
-                    SharedPreferences userSettings = getSharedPreferences(PreferenceUtil.PREFERENCE_NAME, 0);
-                    skipLength = userSettings.getLong(hrefEdit.getText().toString(), 0);
                     readFile(skipLength, READ_LENGTH);
                 }
                 break;
@@ -519,6 +524,7 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
                     }
                 }
             } else {
+                stop();
                 if (!nextUrl.isEmpty()) {
                     hrefEdit.setText(nextUrl);
                     browseWebPage(nextUrl);
@@ -602,7 +608,7 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
             public void onStopTrackingTouch(SeekBar seekBar) {
                 if (browseMode == BROWSE_FOLDER) {
                     if (fileSize > 0) {
-                        skipLength = fileSize / 100 * seekBar.getProgress();
+                        skipLength = (fileSize - fileSize%6) / 100 * seekBar.getProgress();
                     } else {
                         skipLength = seekBar.getProgress();
                     }
@@ -708,7 +714,7 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
             mainHandler.sendEmptyMessageDelayed(0, 2000);
         } else {
             finish();
-            System.exit(0);
+            onDestroy();
         }
     }
 }

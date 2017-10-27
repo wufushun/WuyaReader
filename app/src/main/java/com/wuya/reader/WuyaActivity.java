@@ -56,7 +56,10 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
 
     private ImageButton btnWebPage;
     private ImageButton btnLocalFile;
-    private ImageButton btnGo
+    private ImageButton btnGo;
+
+    private ImageButton btnSearch;
+    private EditText searchEdit;
             ;
     private SeekBar processSeekBar;
 
@@ -70,7 +73,7 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
     private int browseMode = BROWSE_WEB;
     private long skipLength = 0;
     private long fileSize = 0;
-    private final int READ_LENGTH = 3000;
+
     private static String unfinishedContent="";
 
     private static String finishedContent="";
@@ -253,7 +256,7 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
             else {
                 browseMode = BROWSE_FOLDER;
                 if (lastFile.indexOf("file:///")==-1) {
-                    readFile(skipLength, READ_LENGTH);
+                    readFile(skipLength, FileUtil.READ_LENGTH);
                 }
             }
         }
@@ -303,7 +306,7 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
                     }
                     else {
                         browseMode = BROWSE_FOLDER;
-                        readFile(skipLength, READ_LENGTH);
+                        readFile(skipLength, FileUtil.READ_LENGTH);
                     }
                 }
 
@@ -331,6 +334,17 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
                 intent.setType("text/*");//设置类型，我这里是任意类型，任意后缀的可以这样写。
                 intent.addCategory(Intent.CATEGORY_OPENABLE);
                 startActivityForResult(intent,BROWSE_FOLDER);
+            case R.id.search:
+                stop();
+                String searchContent = searchEdit.getText().toString();
+                if (unfinishedContent.contains(searchContent)) {
+                    String sentence = unfinishedContent.substring(0,unfinishedContent.indexOf(searchContent));
+                    unfinishedContent = unfinishedContent.substring(unfinishedContent.indexOf(searchContent));
+                    finishedContent += sentence;
+                }
+                if (browseMode == BROWSE_FOLDER) {
+                    searchFile(skipLength);
+                }
             default:
                 break;
         }
@@ -380,7 +394,7 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
                     if (Build.VERSION.SDK_INT > Build.VERSION_CODES.KITKAT) {//4.4以后
                         hrefEdit.setText(FileUtil.getPath(this, uri));
                     }
-                    readFile(skipLength, READ_LENGTH);
+                    readFile(skipLength, FileUtil.READ_LENGTH);
                 }
                 break;
             case BROWSE_WEB:
@@ -407,6 +421,21 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
         }
         mainHandler.sendMessage(mainHandler.obtainMessage(UI_SPEECH_TEXT_FINISHED));
 
+    }
+
+    private void searchFile(long position) {
+        String searchContent = searchEdit.getText().toString();
+        if (searchContent.isEmpty()) {
+            return;
+        }
+        Map<String,String> result = FileUtil.searchTextFile(hrefEdit.getText().toString(), position,searchContent);
+        skipLength = Long.parseLong(result.get("skip"));
+        fileSize = Long.parseLong(result.get("fileSize"));
+        unfinishedContent = result.get("content");
+        if (!unfinishedContent.isEmpty()) {
+            finishedContent = "";
+            mainHandler.sendMessage(mainHandler.obtainMessage(UI_SPEECH_TEXT_FINISHED));
+        }
     }
 
     /**
@@ -514,7 +543,7 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
         if(unfinishedContent.length()==0) {
             mInput.setText("");
             if (browseMode == BROWSE_FOLDER) {
-                readFile(skipLength, READ_LENGTH);
+                readFile(skipLength, FileUtil.READ_LENGTH);
 
                 if (unfinishedContent.length() == 0) {
                     stop();
@@ -532,11 +561,11 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
             }
         }
         else {
-            if (unfinishedContent.contains("。")) {
-                String sentence = unfinishedContent.substring(0, unfinishedContent.indexOf("。") + 1);
+            if (unfinishedContent.length()>300) {
+                String sentence = unfinishedContent.substring(0, 300);
 
                 mInput.setText(sentence);
-                unfinishedContent = unfinishedContent.substring(unfinishedContent.indexOf("。") + 1);
+                unfinishedContent = unfinishedContent.substring(300);
                 finishedContent += sentence;
             } else {
                 mInput.setText(unfinishedContent);
@@ -551,11 +580,10 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
 
     //上一句
     private void prevSentence() {
-        if(finishedContent.contains("。")) {
-            String temp = finishedContent.substring(0,finishedContent.lastIndexOf("。"));
-            String sentence = finishedContent.substring(temp.lastIndexOf("。")+1)+"。";
+        if(finishedContent.length()>300) {
+            String sentence = finishedContent.substring(finishedContent.length()-300);
             mInput.setText(sentence);
-            finishedContent = finishedContent.substring(0,temp.lastIndexOf("。")+1);
+            finishedContent = finishedContent.substring(0,finishedContent.length()-300);
             unfinishedContent = sentence+unfinishedContent;
         }
         else {
@@ -578,6 +606,10 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
         btnGo = (ImageButton) findViewById(R.id.go);
         btnGo.setOnClickListener(this);
         btnGo.setEnabled(false);
+
+        btnSearch = (ImageButton) findViewById(R.id.search);
+        btnSearch.setOnClickListener(this);
+        searchEdit = (EditText) findViewById(R.id.textSearchContent);
 
         mInput = (TextView) this.findViewById(R.id.input);
 //        mInput.setEnabled(false);
@@ -608,13 +640,13 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
             public void onStopTrackingTouch(SeekBar seekBar) {
                 if (browseMode == BROWSE_FOLDER) {
                     if (fileSize > 0) {
-                        skipLength = (fileSize - fileSize%6) / 100 * seekBar.getProgress();
+                        skipLength = (fileSize - fileSize % FileUtil.READ_LENGTH) / 100 * seekBar.getProgress();
                     } else {
                         skipLength = seekBar.getProgress();
                     }
                     finishedContent = "";
                     unfinishedContent = "";
-                    readFile(skipLength, READ_LENGTH);
+                    readFile(skipLength, FileUtil.READ_LENGTH);
                 }
             }
         });

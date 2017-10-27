@@ -26,6 +26,7 @@ import java.util.Map;
 
 public class FileUtil {
 
+    public static final int READ_LENGTH = 3000;
     //创建一个临时目录，用于复制临时文件，如assets目录下的离线资源文件
     public static String createTmpDir(Context context) {
         String sampleDir = "baiduTTS";
@@ -208,7 +209,7 @@ public class FileUtil {
                 fin.skip(skipLength);
             }
             else {
-                fin.skip(skipLength*fin.available()/100);
+                fin.skip((fin.available()-fin.available() % READ_LENGTH)*skipLength/100);
             }
 
             int lengthNew = 0;
@@ -245,5 +246,54 @@ public class FileUtil {
         } else {
             return "GBK";
         }
+    }
+
+    public static Map<String, String> searchTextFile(String fileName, long skipLength, String searchContent) {
+        Map<String,String> result = new HashMap<String, String>();
+        try{
+
+            FileInputStream fin = new FileInputStream(fileName);
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            int len = -1;
+            byte[] buf = new byte[READ_LENGTH];
+
+            byte[] first3bytes = new byte[3];
+            fin.read(first3bytes);//找到文档的前三个字节并自动判断文档类型。
+            String encoding = getEncoding(first3bytes);
+
+            fin = new FileInputStream(fileName);
+            result.put("fileSize", Long.toString(fin.available()));
+            if (skipLength>100) {
+                fin.skip(skipLength);
+            }
+            else if(skipLength>0){
+                fin.skip((fin.available()-fin.available() % READ_LENGTH)*skipLength/100);
+            }
+            int lengthNew = 0;
+            String content = "";
+            boolean found = false;
+            while ((len = fin.read(buf)) != -1 && !found)
+            {
+                baos = new ByteArrayOutputStream();
+                baos.write(buf, 0, len);
+                baos.flush();
+                content = baos.toString(encoding);
+                if (content.contains(searchContent)) {
+                    found = true;
+                }
+                else {
+                    lengthNew +=len;
+                }
+            }
+            result.put("skip",Long.toString(skipLength+lengthNew));
+
+            result.put("content",content);
+            fin.close();
+        }catch(Exception e){
+
+            result.put("msg",e.getMessage());
+
+        }
+        return result;
     }
 }

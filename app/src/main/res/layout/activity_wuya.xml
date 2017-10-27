@@ -61,8 +61,8 @@
             <TextView
                 android:id="@+id/input"
                 android:layout_width="fill_parent"
-                android:minLines="12"
-                android:maxLines="12"
+                android:minLines="15"
+                android:maxLines="15"
                 android:layout_height="wrap_content"
                 android:hint="" />
             <TextView
@@ -76,7 +76,7 @@
                 android:scrollbars="vertical" />
             <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
+                android:layout_height="wrap_content"
                 android:orientation="horizontal">
                 <SeekBar
                     android:id="@+id/progressSeekBar"
@@ -87,6 +87,23 @@
                     android:id="@+id/textProgress"
                     android:layout_width="30dp"
                     android:layout_height="wrap_content"/>
+            </LinearLayout>
+            <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+                <EditText
+                    android:id="@+id/textSearchContent"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"/>
+                <ImageButton
+                    android:id="@+id/search"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:background="@android:color/transparent"
+                    android:layout_margin="2dp"
+                    app:srcCompat="@drawable/search_48" />
             </LinearLayout>
         </LinearLayout>
     </FrameLayout>

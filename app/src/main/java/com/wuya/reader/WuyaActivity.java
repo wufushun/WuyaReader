@@ -16,13 +16,16 @@ import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
+import android.text.method.ScrollingMovementMethod;
 import android.util.Pair;
+import android.util.TypedValue;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.PopupWindow;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -50,6 +53,7 @@ import java.util.Map;
 public class WuyaActivity extends AppCompatActivity implements MainHandlerConstant,View.OnClickListener, View.OnTouchListener {
 
     private TextView contentTextView;
+    private ScrollView contentScrollView;
     private Handler mainHandler;
     private EditText hrefEditText;
 
@@ -85,9 +89,9 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
     private static int PLAY_STATE = PLAY_PAUSE;
 
     private double oldDist = 0;
-    private static final int ZOOM =1;
-    private static final int ZOOM_IN =2;
-    private static final int ZOOM_OUT =3;
+    private static final int NONE = 0;// 空
+    private static final int DRAG = 1;// 按下第一个点
+    private static final int ZOOM = 2;// 按下第二个点
     private static int mode = 0;
     /**最小字体*/
     public static final float MIN_TEXT_SIZE = 10f;
@@ -259,27 +263,26 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
      */
     @Override
     public boolean onTouch(View v, MotionEvent event) {
-        switch (event.getAction()) {
-            /**
-             * 点击的开始位置
-             */
+        switch (event.getAction() & MotionEvent.ACTION_MASK) {
+            case MotionEvent.ACTION_UP:
+            case MotionEvent.ACTION_POINTER_UP:
+                mode = NONE;
+                break;
             case MotionEvent.ACTION_DOWN:
+                mode = DRAG;
                 //左边前翻页，右边后翻页
                 int left = contentTextView.getLeft();
-                int top = contentTextView.getTop();
-                int bottom = contentTextView.getBottom();
                 int right = contentTextView.getRight();
-                if (event.getX()>(left+(right-left)/2) && event.getX()<right) {
-                    stop();
+                if (event.getX()>(left+(right-left)*3/4) && event.getX()<right) {
+                    setPlayPauseButton(PLAY_PAUSE);
                     nextSentence();
                 }
-                else if (event.getX()<(left+(right-left)/2) && event.getX()>left) {
-                    stop();
+                else if (event.getX()<(left+(right-left)/4) && event.getX()>left) {
+                    setPlayPauseButton(PLAY_PAUSE);
                     prevSentence();
                 }
                 break;
             case MotionEvent.ACTION_POINTER_DOWN:
-                //TODO:放大缩小未生效
                 oldDist = spacing(event);
                 if (oldDist > 10f)
                 {
@@ -296,11 +299,10 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
                     {
                         zoomOut();
                     }
-                    if (newDist < oldDist)
+                    else if (newDist < oldDist)
                     {
                         zoomIn();
                     }
-
                 }
                 break;
             default:
@@ -332,12 +334,12 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
      */
     protected void zoomOut()
     {
-        textSize += 1;
+        textSize += 0.5f;;
         if (textSize > MAX_TEXT_SIZE)
         {
             textSize = MAX_TEXT_SIZE;
         }
-        contentTextView.setTextSize(textSize);
+        contentTextView.setTextSize(TypedValue.COMPLEX_UNIT_PX,textSize);
     }
 
     /**
@@ -345,12 +347,12 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
      */
     protected void zoomIn()
     {
-        textSize -= 1;
+        textSize -= 0.5f;;
         if (textSize < MIN_TEXT_SIZE)
         {
             textSize = MIN_TEXT_SIZE;
         }
-        contentTextView.setTextSize(textSize);
+        contentTextView.setTextSize(TypedValue.COMPLEX_UNIT_PX,textSize);
     }
     /**
      * 界面上的按钮对应方法
@@ -401,7 +403,7 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
                 intent.setType("text/*");//设置类型，我这里是任意类型，任意后缀的可以这样写。
                 intent.addCategory(Intent.CATEGORY_OPENABLE);
                 startActivityForResult(intent,BROWSE_FOLDER);
-            case R.id.searchButton:
+            case R.id.mainSearchButton:
                 setPlayPauseButton(PLAY_PAUSE);
                 stop();
                 showSearchView();
@@ -444,12 +446,12 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
     private void setPlayPauseButton(int flag) {
         switch (flag) {
             case PLAY_NORMAL:
-                btnPlayPause.setImageDrawable(getResources().getDrawable(R.drawable.pause_48));
+                btnPlayPause.setImageDrawable(getResources().getDrawable(R.drawable.pause_48,getTheme()));
                 PLAY_STATE = PLAY_NORMAL;
                 break;
             default:
                 stop();
-                btnPlayPause.setImageDrawable(getResources().getDrawable(R.drawable.play_48));
+                btnPlayPause.setImageDrawable(getResources().getDrawable(R.drawable.play_48,getTheme()));
                 PLAY_STATE = PLAY_PAUSE;
         }
     }
@@ -765,7 +767,7 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
         btnGo.setOnClickListener(this);
         btnGo.setEnabled(false);
 
-        btnSearch = (ImageButton) findViewById(R.id.searchButton);
+        btnSearch = (ImageButton) findViewById(R.id.mainSearchButton);
         btnSearch.setOnClickListener(this);
         btnSearch.setEnabled(false);
         btnPlayPause = (ImageButton) findViewById(R.id.playPauseButton);
@@ -775,9 +777,12 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
         btnSettings.setOnClickListener(this);
 
         contentTextView = (TextView) this.findViewById(R.id.contentTextView);
-        contentTextView.setClickable(true);
+        contentTextView.setMovementMethod(ScrollingMovementMethod.getInstance());
         contentTextView.setOnTouchListener(this);
         textSize = contentTextView.getTextSize();
+
+        contentScrollView = (ScrollView)this.findViewById(R.id.contentScrollView);
+//        contentScrollView.setOnTouchListener(this);
 
         hrefEditText = (EditText) findViewById(R.id.hrefEditText);
 

@@ -59,13 +59,16 @@
                 android:layout_height="0px"
                 android:focusable="true"
                 android:focusableInTouchMode="true" />
-            <TextView
-                android:id="@+id/contentTextView"
-                android:layout_width="fill_parent"
-                android:minLines="15"
-                android:maxLines="15"
-                android:layout_height="fill_parent"
-                android:hint="" />
+            <ScrollView
+                android:id="@+id/contentScrollView"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+                <TextView
+                    android:id="@+id/contentTextView"
+                    android:minLines="15"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent" />
+            </ScrollView>
         </LinearLayout>
     </FrameLayout>
 
@@ -75,7 +78,7 @@
         android:layout_marginBottom="10dp"
         android:orientation="horizontal">
         <ImageButton
-            android:id="@+id/searchButton"
+            android:id="@+id/mainSearchButton"
             android:layout_width="0dp"
             android:layout_weight="1"
             android:layout_height="48dp"

@@ -5,32 +5,31 @@ import android.app.Activity;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.preference.PreferenceManager;
-import android.support.annotation.NonNull;
-import android.support.design.widget.BottomNavigationView;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
-import android.text.method.ScrollingMovementMethod;
 import android.util.Pair;
 import android.view.KeyEvent;
-import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.ImageButton;
-import android.widget.SeekBar;
+import android.widget.PopupWindow;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import com.baidu.tts.client.SpeechSynthesizer;
 import com.baidu.tts.client.SpeechSynthesizerListener;
 import com.baidu.tts.client.TtsMode;
+import com.wuya.reader.callback.SearchCallback;
 import com.wuya.reader.control.InitConfig;
 import com.wuya.reader.control.MySyntherizer;
 import com.wuya.reader.control.NonBlockSyntherizer;
@@ -41,31 +40,29 @@ import com.wuya.reader.util.HttpUtil;
 import com.wuya.reader.util.HttpsUtil;
 import com.wuya.reader.util.OfflineResource;
 import com.wuya.reader.util.PreferenceUtil;
+import com.wuya.reader.util.ViewUtil;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class WuyaActivity extends AppCompatActivity implements MainHandlerConstant,View.OnClickListener {
+public class WuyaActivity extends AppCompatActivity implements MainHandlerConstant,View.OnClickListener, View.OnTouchListener {
 
-    private TextView mInput;
-    private TextView mShowText;
+    private TextView contentTextView;
     private Handler mainHandler;
-    private EditText hrefEdit;
+    private EditText hrefEditText;
 
     private ImageButton btnWebPage;
     private ImageButton btnLocalFile;
     private ImageButton btnGo;
 
     private ImageButton btnSearch;
-    private EditText searchEdit;
-            ;
-    private SeekBar processSeekBar;
+    private ImageButton btnPlayPause;
+    private ImageButton btnSettings;
 
-    private TextView textProgress;
-
-    private BottomNavigationView navigation;
+    /*查找条件*/
+    private PopupWindow searchPopupWindow;
 
     private final static int BROWSE_FOLDER = 0;
     private final static int BROWSE_WEB = 1;
@@ -81,8 +78,26 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
     private String nextUrl = "";
 
     private final static int PLAY_NORMAL = 0;
-    private final static int PLAY_FORWARD = 1;
-    private final static int PLAY_REWIND = 2;
+    private final static int PLAY_PAUSE = 1;
+    private final static int PLAY_FORWARD = 2;
+    private final static int PLAY_REWIND = 3;
+
+    private static int PLAY_STATE = PLAY_PAUSE;
+
+    private double oldDist = 0;
+    private static final int ZOOM =1;
+    private static final int ZOOM_IN =2;
+    private static final int ZOOM_OUT =3;
+    private static int mode = 0;
+    /**最小字体*/
+    public static final float MIN_TEXT_SIZE = 10f;
+
+    /**最大字体*/
+    public static final float MAX_TEXT_SIZE = 100.0f;
+
+    /** 设置字体大小 */
+    float textSize;
+
     // ================== 初始化参数设置开始 ==========================
     /**
      * 发布时请替换成自己申请的appId appKey 和 secretKey。注意如果需要离线合成功能,请在您申请的应用中填写包名。
@@ -117,9 +132,6 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
         initialViews(); // 配置onclick
         initPermission(); // android 6.0以上动态权限申请
 
-        BottomNavigationView navigation = (BottomNavigationView) findViewById(R.id.navigation);
-        navigation.setOnNavigationItemSelectedListener(mOnNavigationItemSelectedListener);
-
         mainHandler = new Handler() {
             /*
              * @param msg
@@ -137,53 +149,6 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
 
         initialTts(); // 初始化TTS引擎
     }
-
-    private BottomNavigationView.OnNavigationItemSelectedListener mOnNavigationItemSelectedListener
-            = new BottomNavigationView.OnNavigationItemSelectedListener() {
-
-        @Override
-        public boolean onNavigationItemSelected(@NonNull MenuItem item) {
-            switch (item.getItemId()) {
-                case R.id.play_pause:
-                    if(item.getTitle().equals(getResources().getString(R.string.title_play))) {
-                        item.setTitle(R.string.title_pause);
-                        item.setIcon(R.drawable.pause_48);
-                        // 合成前可以修改参数：
-                        Map<String, String> params = getParams();
-                        synthesizer.setParams(params);
-                        loadModel();
-
-                        speak();
-                    }
-                    else {
-                        stop();
-                        item.setTitle(R.string.title_play);
-                        item.setIcon(R.drawable.play_48);
-                    }
-                    //通知系统更新菜单
-                    supportInvalidateOptionsMenu();
-                    return true;
-                case R.id.forward:
-                    stop();
-                    nextSentence();
-                    navigation.getMenu().getItem(0).setTitle(R.string.title_play);
-                    navigation.getMenu().getItem(0).setIcon(R.drawable.play_48);
-                    return true;
-                case R.id.rewind:
-                    stop();
-                    prevSentence();
-                    navigation.getMenu().getItem(0).setTitle(R.string.title_play);
-                    navigation.getMenu().getItem(0).setIcon(R.drawable.play_48);
-                    return true;
-                case R.id.settings:
-                    startAct(SettingsActivity.class);
-                    return true;
-            }
-            return false;
-        }
-
-    };
-
 
     /**
      * 初始化引擎，需要的参数均在InitConfig类里
@@ -247,7 +212,7 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
         SharedPreferences userSettings = getSharedPreferences(PreferenceUtil.PREFERENCE_NAME, 0);
         String lastFile = userSettings.getString("lastFile","");
         skipLength = userSettings.getLong("skipLength",0);
-        hrefEdit.setText(lastFile);
+        hrefEditText.setText(lastFile);
         if (!lastFile.isEmpty()) {
             if (lastFile.contains("http://") || lastFile.contains("https://")) {
                 browseMode = BROWSE_WEB;
@@ -271,7 +236,7 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
     }
 
     private void rememberSkip() {
-        String url = hrefEdit.getText().toString();
+        String url = hrefEditText.getText().toString();
 
         if (!url.isEmpty()) {
             SharedPreferences userSettings = getSharedPreferences(PreferenceUtil.PREFERENCE_NAME, 0);
@@ -280,23 +245,125 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
                 skipLength = finishedContent.length();
             }
             editor.putLong("skipLength", skipLength);
-            editor.putString("lastFile", hrefEdit.getText().toString());
+            editor.putString("lastFile", hrefEditText.getText().toString());
             editor.commit();
         }
     }
 
 
     /**
+     * 界面上的触摸事件
+     * @param v
+     * @param event
+     * @return
+     */
+    @Override
+    public boolean onTouch(View v, MotionEvent event) {
+        switch (event.getAction()) {
+            /**
+             * 点击的开始位置
+             */
+            case MotionEvent.ACTION_DOWN:
+                //左边前翻页，右边后翻页
+                int left = contentTextView.getLeft();
+                int top = contentTextView.getTop();
+                int bottom = contentTextView.getBottom();
+                int right = contentTextView.getRight();
+                if (event.getX()>(left+(right-left)/2) && event.getX()<right) {
+                    stop();
+                    nextSentence();
+                }
+                else if (event.getX()<(left+(right-left)/2) && event.getX()>left) {
+                    stop();
+                    prevSentence();
+                }
+                break;
+            case MotionEvent.ACTION_POINTER_DOWN:
+                //TODO:放大缩小未生效
+                oldDist = spacing(event);
+                if (oldDist > 10f)
+                {
+                    mode = ZOOM;
+                }
+                break;
+            case MotionEvent.ACTION_MOVE:
+                if (mode == ZOOM)
+                {
+                    // 正在移动的点距初始点的距离
+                    double newDist = spacing(event);
+
+                    if (newDist > oldDist)
+                    {
+                        zoomOut();
+                    }
+                    if (newDist < oldDist)
+                    {
+                        zoomIn();
+                    }
+
+                }
+                break;
+            default:
+                break;
+        }
+        /**
+         *  注意返回值
+         *  true：view继续响应Touch操作；
+         *  false：view不再响应Touch操作，故此处若为false，只能显示起始位置，不能显示实时位置和结束位置
+         */
+        return true;
+    }
+
+    /**
+     * 求出2个触点间的 距离
+     *
+     * @param event
+     * @return
+     */
+    private double spacing(MotionEvent event)
+    {
+        double x = event.getX(0) - event.getX(1);
+        double y = event.getY(0) - event.getY(1);
+        return Math.sqrt(x * x + y * y);
+    }
+
+    /**
+     * 放大
+     */
+    protected void zoomOut()
+    {
+        textSize += 1;
+        if (textSize > MAX_TEXT_SIZE)
+        {
+            textSize = MAX_TEXT_SIZE;
+        }
+        contentTextView.setTextSize(textSize);
+    }
+
+    /**
+     * 缩小
+     */
+    protected void zoomIn()
+    {
+        textSize -= 1;
+        if (textSize < MIN_TEXT_SIZE)
+        {
+            textSize = MIN_TEXT_SIZE;
+        }
+        contentTextView.setTextSize(textSize);
+    }
+    /**
      * 界面上的按钮对应方法
      */
     @Override
     public void onClick(View v) {
         int id = v.getId();
+        resetButton();
         Intent intent;
-        String url = hrefEdit.getText().toString();
+        String url = hrefEditText.getText().toString();
         switch (id) {
-            case R.id.go:
-                stop();
+            case R.id.goButton:
+                setPlayPauseButton(PLAY_PAUSE);
                 skipLength = 0;
 
                 if (!url.isEmpty()) {
@@ -312,8 +379,8 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
 
 
                 break;
-            case R.id.webPage:
-                stop();
+            case R.id.webPageButton:
+                setPlayPauseButton(PLAY_PAUSE);
                 rememberSkip();
                 browseMode = BROWSE_WEB;
                 //打开当前页面
@@ -326,27 +393,132 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
                 startActivityForResult(intent, BROWSE_WEB);
 
                 break;
-            case R.id.localFile:
-                stop();
+            case R.id.localFileButton:
+                setPlayPauseButton(PLAY_PAUSE);
                 rememberSkip();
                 browseMode = BROWSE_FOLDER;
                 intent = new Intent(Intent.ACTION_GET_CONTENT);
                 intent.setType("text/*");//设置类型，我这里是任意类型，任意后缀的可以这样写。
                 intent.addCategory(Intent.CATEGORY_OPENABLE);
                 startActivityForResult(intent,BROWSE_FOLDER);
-            case R.id.search:
+            case R.id.searchButton:
+                setPlayPauseButton(PLAY_PAUSE);
                 stop();
-                String searchContent = searchEdit.getText().toString();
-                if (unfinishedContent.contains(searchContent)) {
-                    String sentence = unfinishedContent.substring(0,unfinishedContent.indexOf(searchContent));
-                    unfinishedContent = unfinishedContent.substring(unfinishedContent.indexOf(searchContent));
-                    finishedContent += sentence;
+                showSearchView();
+
+                break;
+            case R.id.playPauseButton:
+                if(PLAY_STATE == PLAY_PAUSE) {
+                    // 合成前可以修改参数：
+                    Map<String, String> params = getParams();
+                    synthesizer.setParams(params);
+                    loadModel();
+
+                    speak();
+                    setPlayPauseButton(PLAY_NORMAL);
                 }
-                if (browseMode == BROWSE_FOLDER) {
-                    searchFile(skipLength);
+                else {
+                    setPlayPauseButton(PLAY_PAUSE);
                 }
+
+                break;
+            case R.id.settingsButton:
+                setPlayPauseButton(PLAY_PAUSE);
+                startAct(SettingsActivity.class);
+
+                break;
             default:
                 break;
+        }
+    }
+
+    private void resetButton() {
+        btnGo.setBackgroundColor(Color.TRANSPARENT);
+        btnWebPage.setBackgroundColor(Color.TRANSPARENT);
+        btnLocalFile.setBackgroundColor(Color.TRANSPARENT);
+        btnSearch.setBackgroundColor(Color.TRANSPARENT);
+        btnPlayPause.setBackgroundColor(Color.TRANSPARENT);
+        btnSettings.setBackgroundColor(Color.TRANSPARENT);
+    }
+
+    private void setPlayPauseButton(int flag) {
+        switch (flag) {
+            case PLAY_NORMAL:
+                btnPlayPause.setImageDrawable(getResources().getDrawable(R.drawable.pause_48));
+                PLAY_STATE = PLAY_NORMAL;
+                break;
+            default:
+                stop();
+                btnPlayPause.setImageDrawable(getResources().getDrawable(R.drawable.play_48));
+                PLAY_STATE = PLAY_PAUSE;
+        }
+    }
+
+    /*显示查找菜单*/
+    private void showSearchView(){
+        if(null == searchPopupWindow) {
+
+            searchPopupWindow = ViewUtil.getSearchView(WuyaActivity.this, new SearchCallback() {
+
+                @Override
+                public void jumpTo(int progress) {
+                    if (browseMode == BROWSE_FOLDER) {
+                        if (fileSize > 0) {
+                            skipLength = (fileSize - fileSize % FileUtil.READ_LENGTH) / 100 * progress;
+                        } else {
+                            skipLength = progress;
+                        }
+                        finishedContent = "";
+                        unfinishedContent = "";
+                        readFile(skipLength, FileUtil.READ_LENGTH);
+                    }
+                    else {
+                        if (finishedContent.length()>0 || unfinishedContent.length()>0) {
+                            skipLength = (finishedContent.length() + unfinishedContent.length()) * progress / 100;
+                            finishedContent = (finishedContent+unfinishedContent).substring(0,(int)skipLength);
+                            unfinishedContent = (finishedContent+unfinishedContent).substring((int)skipLength);
+                            nextSentence();
+                        }
+                    }
+                }
+
+                @Override
+                public void search(String searchContent) {
+                    if (unfinishedContent.contains(searchContent)) {
+                        String sentence = unfinishedContent.substring(0,unfinishedContent.indexOf(searchContent));
+                        unfinishedContent = unfinishedContent.substring(unfinishedContent.indexOf(searchContent));
+                        finishedContent += sentence;
+                    }
+                    else if (finishedContent.contains(searchContent)) {
+                        String sentence = finishedContent.substring(0,finishedContent.indexOf(searchContent));
+                        unfinishedContent = finishedContent.substring(finishedContent.indexOf(searchContent))+unfinishedContent;
+                        finishedContent = sentence;
+                        nextSentence();
+                    }
+                    else {
+                        if (browseMode == BROWSE_FOLDER) {
+                            searchFile(searchContent, skipLength);
+                        }
+                    }
+                }
+            });
+
+            searchPopupWindow.setOnDismissListener(new PopupWindow.OnDismissListener() {
+                @Override
+                public void onDismiss() {
+                    resetButton();
+                }
+            });
+        }
+
+        if(searchPopupWindow.isShowing()) {
+
+            searchPopupWindow.dismiss();
+
+        }
+        else {
+
+            ViewUtil.showPopUp(WuyaActivity.this, btnSearch, searchPopupWindow);
         }
     }
 
@@ -354,8 +526,6 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
         unfinishedContent = "";
         finishedContent = "";
         fileSize = 1;
-        processSeekBar.setVisibility(View.INVISIBLE);
-        textProgress.setVisibility(View.INVISIBLE);
         if (url.contains("http://") || url.contains("https://")) {
         }
         else {
@@ -366,7 +536,7 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
         HttpUtil.doGetAsyn(url, encoding, new HttpUtil.CallBack() {
             @Override
             public void onRequestComplete(String result) {
-                Map<String, String> resultMap = HtmlContentUtil.getHtmlContent(hrefEdit.getText().toString(),result);
+                Map<String, String> resultMap = HtmlContentUtil.getHtmlContent(hrefEditText.getText().toString(),result);
                 String content = resultMap.get("orientContent");
                 nextUrl = resultMap.get("nextUrl");
                 if (skipLength>0) {
@@ -392,7 +562,7 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
                 Uri uri = data.getData();
                 if (resultCode == Activity.RESULT_OK) {
                     if (Build.VERSION.SDK_INT > Build.VERSION_CODES.KITKAT) {//4.4以后
-                        hrefEdit.setText(FileUtil.getPath(this, uri));
+                        hrefEditText.setText(FileUtil.getPath(this, uri));
                     }
                     readFile(skipLength, FileUtil.READ_LENGTH);
                 }
@@ -400,7 +570,7 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
             case BROWSE_WEB:
                 String url = data.getStringExtra("url");
                 if (null != url && !url.isEmpty()) {
-                    hrefEdit.setText(url);
+                    hrefEditText.setText(url);
                     browseWebPage(url);
                 }
                 break;
@@ -409,13 +579,11 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
 
 
     private void readFile(long position,int length) {
-        processSeekBar.setVisibility(View.VISIBLE);
-        textProgress.setVisibility(View.VISIBLE);
-        Map<String,String> result = FileUtil.openTextFile(hrefEdit.getText().toString(), position,length);
+        Map<String,String> result = FileUtil.openTextFile(hrefEditText.getText().toString(), position,length);
         skipLength = Long.parseLong(result.get("skip"));
         fileSize = Long.parseLong(result.get("fileSize"));
         unfinishedContent = result.get("content");
-//        unfinishedContent = FileUtil.openTextFile(hrefEdit.getText().toString(),position,length);
+//        unfinishedContent = FileUtil.openTextFile(hrefEditText.getText().toString(),position,length);
         if (position == 0) {
             finishedContent = "";
         }
@@ -423,12 +591,11 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
 
     }
 
-    private void searchFile(long position) {
-        String searchContent = searchEdit.getText().toString();
+    private void searchFile(String searchContent, long position) {
         if (searchContent.isEmpty()) {
             return;
         }
-        Map<String,String> result = FileUtil.searchTextFile(hrefEdit.getText().toString(), position,searchContent);
+        Map<String,String> result = FileUtil.searchTextFile(hrefEditText.getText().toString(), position,searchContent);
         skipLength = Long.parseLong(result.get("skip"));
         fileSize = Long.parseLong(result.get("fileSize"));
         unfinishedContent = result.get("content");
@@ -444,18 +611,17 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
      * 需要合成的文本text的长度不能超过1024个GBK字节。
      */
     private void speak() {
-        mShowText.setText("");
-        String text = mInput.getText().toString();
+        String text = contentTextView.getText().toString();
 
         //从光标处开始读
-        int cusorPosition = mInput.getSelectionStart();
+        int cusorPosition = contentTextView.getSelectionStart();
         if (cusorPosition>-1) {
             text = text.substring(cusorPosition);
         }
         //需要合成的文本text的长度不能超过1024个GBK字节。
-        if (TextUtils.isEmpty(mInput.getText())) {
+        if (TextUtils.isEmpty(contentTextView.getText())) {
             text = "欢迎使用乌鸦读书,百度语音为你提供支持。";
-            mInput.setText(text);
+            contentTextView.setText(text);
         }
 
         int result;
@@ -474,9 +640,8 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
             result = synthesizer.speak(text);
         }
 
-        if (navigation.getMenu().getItem(0).getTitle().equals(getResources().getString(R.string.title_play))) {
-            navigation.getMenu().getItem(0).setTitle(R.string.title_pause);
-            navigation.getMenu().getItem(0).setIcon(R.drawable.pause_48);
+        if (PLAY_STATE == PLAY_PAUSE) {
+            setPlayPauseButton(PLAY_NORMAL);
         }
 
         checkResult(result, "speak");
@@ -502,6 +667,8 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
                 btnWebPage.setEnabled(true);
                 btnLocalFile.setEnabled(true);
                 btnGo.setEnabled(true);
+                btnSearch.setEnabled(true);
+                btnPlayPause.setEnabled(true);
                 msg.what = PRINT;
                 if (fileSize==0) {
                     //加载最后播放的文件及位置
@@ -515,21 +682,21 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
 //                print(msg);
 //                break;
 //            case UI_CHANGE_INPUT_TEXT_SELECTION:
-//                if (msg.arg1 <= mInput.getText().length()) {
-//                    mInput.setSelection(0, msg.arg1);
+//                if (msg.arg1 <= contentTextView.getText().length()) {
+//                    contentTextView.setSelection(0, msg.arg1);
 //                }
 //                break;
 //            case UI_CHANGE_SYNTHES_TEXT_SELECTION:
-//                SpannableString colorfulText = new SpannableString(mInput.getText().toString());
+//                SpannableString colorfulText = new SpannableString(contentTextView.getText().toString());
 //                if (msg.arg1 <= colorfulText.toString().length()) {
 //                    colorfulText.setSpan(new ForegroundColorSpan(Color.GRAY), 0, msg.arg1, Spannable
 //                            .SPAN_EXCLUSIVE_EXCLUSIVE);
-//                    mInput.setText(colorfulText);
+//                    contentTextView.setText(colorfulText);
 //                }
 //                break;
             case UI_SPEECH_TEXT_FINISHED:
                 nextSentence();
-                if(!mInput.getText().toString().isEmpty()) {
+                if(!contentTextView.getText().toString().isEmpty()) {
                     speak();
                 }
                 break;
@@ -541,21 +708,18 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
     //下一句
     private void nextSentence() {
         if(unfinishedContent.length()==0) {
-            mInput.setText("");
+            contentTextView.setText("");
             if (browseMode == BROWSE_FOLDER) {
                 readFile(skipLength, FileUtil.READ_LENGTH);
 
                 if (unfinishedContent.length() == 0) {
                     stop();
-                    if (navigation.getMenu().getItem(0).getTitle().equals(getResources().getString(R.string.title_pause))) {
-                        navigation.getMenu().getItem(0).setTitle(R.string.title_play);
-                        navigation.getMenu().getItem(0).setIcon(R.drawable.play_48);
-                    }
+                    setPlayPauseButton(PLAY_PAUSE);
                 }
             } else {
                 stop();
                 if (!nextUrl.isEmpty()) {
-                    hrefEdit.setText(nextUrl);
+                    hrefEditText.setText(nextUrl);
                     browseWebPage(nextUrl);
                 }
             }
@@ -564,17 +728,14 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
             if (unfinishedContent.length()>300) {
                 String sentence = unfinishedContent.substring(0, 300);
 
-                mInput.setText(sentence);
+                contentTextView.setText(sentence);
                 unfinishedContent = unfinishedContent.substring(300);
                 finishedContent += sentence;
             } else {
-                mInput.setText(unfinishedContent);
+                contentTextView.setText(unfinishedContent);
                 finishedContent += unfinishedContent;
                 unfinishedContent = "";
             }
-        }
-        if(finishedContent.length()>0) {
-            navigation.getMenu().getItem(2).setEnabled(true);
         }
     }
 
@@ -582,78 +743,47 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
     private void prevSentence() {
         if(finishedContent.length()>300) {
             String sentence = finishedContent.substring(finishedContent.length()-300);
-            mInput.setText(sentence);
+            contentTextView.setText(sentence);
             finishedContent = finishedContent.substring(0,finishedContent.length()-300);
             unfinishedContent = sentence+unfinishedContent;
         }
         else {
-            mInput.setText(finishedContent);
+            contentTextView.setText(finishedContent);
             unfinishedContent = finishedContent+unfinishedContent;
             finishedContent = "";
-        }
-        if(finishedContent.length()==0) {
-            navigation.getMenu().getItem(2).setEnabled(false);
         }
     }
 
     private void initialViews() {
-        btnWebPage = (ImageButton) findViewById(R.id.webPage);
+        btnWebPage = (ImageButton) findViewById(R.id.webPageButton);
         btnWebPage.setOnClickListener(this);
         btnWebPage.setEnabled(false);
-        btnLocalFile = (ImageButton) findViewById(R.id.localFile);
+        btnLocalFile = (ImageButton) findViewById(R.id.localFileButton);
         btnLocalFile.setOnClickListener(this);
         btnLocalFile.setEnabled(false);
-        btnGo = (ImageButton) findViewById(R.id.go);
+        btnGo = (ImageButton) findViewById(R.id.goButton);
         btnGo.setOnClickListener(this);
         btnGo.setEnabled(false);
 
-        btnSearch = (ImageButton) findViewById(R.id.search);
+        btnSearch = (ImageButton) findViewById(R.id.searchButton);
         btnSearch.setOnClickListener(this);
-        searchEdit = (EditText) findViewById(R.id.textSearchContent);
+        btnSearch.setEnabled(false);
+        btnPlayPause = (ImageButton) findViewById(R.id.playPauseButton);
+        btnPlayPause.setOnClickListener(this);
+        btnPlayPause.setEnabled(false);
+        btnSettings = (ImageButton) findViewById(R.id.settingsButton);
+        btnSettings.setOnClickListener(this);
 
-        mInput = (TextView) this.findViewById(R.id.input);
-//        mInput.setEnabled(false);
-//        mInput.setVerticalScrollBarEnabled(true);
-        hrefEdit = (EditText) findViewById(R.id.href);
+        contentTextView = (TextView) this.findViewById(R.id.contentTextView);
+        contentTextView.setClickable(true);
+        contentTextView.setOnTouchListener(this);
+        textSize = contentTextView.getTextSize();
 
-        mShowText = (TextView) this.findViewById(R.id.showText);
-        mShowText.setMovementMethod(new ScrollingMovementMethod());
-        mShowText.setVisibility(View.INVISIBLE);
+        hrefEditText = (EditText) findViewById(R.id.hrefEditText);
 
-        textProgress = (TextView) this.findViewById(R.id.textProgress);
+        contentTextView.setText(DESC);
 
-        processSeekBar = (SeekBar) findViewById(R.id.progressSeekBar);
-        processSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){
-            // 数值改变
-            @Override
-            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                textProgress.setText(Integer.toString(progress));
-            }
 
-            // 开始拖动
-            @Override
-            public void onStartTrackingTouch(SeekBar seekBar) {
-            }
-
-            // 停止拖动
-            @Override
-            public void onStopTrackingTouch(SeekBar seekBar) {
-                if (browseMode == BROWSE_FOLDER) {
-                    if (fileSize > 0) {
-                        skipLength = (fileSize - fileSize % FileUtil.READ_LENGTH) / 100 * seekBar.getProgress();
-                    } else {
-                        skipLength = seekBar.getProgress();
-                    }
-                    finishedContent = "";
-                    unfinishedContent = "";
-                    readFile(skipLength, FileUtil.READ_LENGTH);
-                }
-            }
-        });
-
-        navigation = (BottomNavigationView) findViewById(R.id.navigation);
-
-        mShowText.setText(DESC);
     }
 
     protected void toPrint(String str) {
@@ -661,29 +791,6 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
         msg.obj = str;
         mainHandler.sendMessage(msg);
     }
-
-//    private void print(Message msg) {
-//        String message = (String) msg.obj;
-//        if (message != null) {
-//            scrollLog(message);
-//        }
-//    }
-//
-//    private void scrollLog(String message) {
-//        Spannable colorMessage = new SpannableString(message + "\n");
-//        colorMessage.setSpan(new ForegroundColorSpan(0xff0000ff), 0, message.length(),
-//                Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-//        mShowText.append(colorMessage);
-//        Layout layout = mShowText.getLayout();
-//        if (layout != null) {
-//            int scrollAmount = layout.getLineTop(mShowText.getLineCount()) - mShowText.getHeight();
-//            if (scrollAmount > 0) {
-//                mShowText.scrollTo(0, scrollAmount + mShowText.getCompoundPaddingBottom());
-//            } else {
-//                mShowText.scrollTo(0, 0);
-//            }
-//        }
-//    }
 
     /**
      * android 6.0 以上需要动态申请权限

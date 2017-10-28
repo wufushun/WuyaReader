@@ -10,6 +10,7 @@
     <string name="title_localFile">本地文件</string>
     <string name="title_webPage">浏览</string>
     <string name="title_settings">设置</string>
+    <string name="title_search">查找</string>
     <string name="title_play">播放</string>
     <string name="title_pause">暂停</string>
     <string name="title_sound_switch">声音切换</string>

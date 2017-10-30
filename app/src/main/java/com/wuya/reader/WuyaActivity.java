@@ -581,7 +581,7 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
 
 
     private void readFile(long position,int length) {
-        Map<String,String> result = FileUtil.openTextFile(hrefEditText.getText().toString(), position,length);
+        Map<String,String> result = FileUtil.openTextFile(hrefEditText.getText().toString(), position);
         skipLength = Long.parseLong(result.get("skip"));
         fileSize = Long.parseLong(result.get("fileSize"));
         unfinishedContent = result.get("content");

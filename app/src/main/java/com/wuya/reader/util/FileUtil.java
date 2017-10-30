@@ -14,6 +14,7 @@ import android.provider.MediaStore;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -193,40 +194,18 @@ public class FileUtil {
     public static Map<String, String> openTextFile(String fileName, long skipLength) {
         Map<String,String> result = new HashMap<String, String>();
         try{
-            FileInputStream fin = new FileInputStream(fileName);
+            //获取字符集
+            String encoding = getEncoding(fileName);
+            skipLength = calculateSkipLength(fileName, skipLength);
+
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             int len = -1;
             byte[] buf = new byte[READ_LENGTH];
-            byte[] first3bytes = new byte[3];
             byte[] oneByte = new byte[1];
             boolean paused = false;
 
-            fin.read(first3bytes);//找到文档的前三个字节并自动判断文档类型。
-            String encoding = getEncoding(first3bytes);
-
-            fin = new FileInputStream(fileName);
+            FileInputStream fin = new FileInputStream(fileName);
             result.put("fileSize", Long.toString(fin.available()));
-            if (skipLength<100) {
-                skipLength = (fin.available()-fin.available() % READ_LENGTH)*skipLength/100;
-
-            }
-            fin.skip(skipLength-2);
-            //对于直接跳转，需要找到回车换行
-            while ((fin.read(oneByte)) !=-1 && !paused) {
-                if (oneByte[0] == 13) {
-                    skipLength++;
-                    if ((fin.read(oneByte)) !=-1) {
-                        skipLength++;
-                        if (oneByte[0] == 10) {
-                            paused = true;
-                        }
-                    }
-                }
-                else {
-                    skipLength++;
-                }
-            }
-            fin = new FileInputStream(fileName);
             fin.skip(skipLength);
             int lengthNew = 0;
             while ((len = fin.read(buf)) != -1 && lengthNew<READ_LENGTH)
@@ -235,11 +214,10 @@ public class FileUtil {
                 baos.write(buf, 0, len);
             }
             //对于结尾，需要找到回车换行
-            paused = false;
             while ((fin.read(oneByte)) !=-1 && !paused) {
+                baos.write(oneByte, 0, 1);
+                lengthNew++;
                 if (oneByte[0] == 13) {
-                    baos.write(oneByte, 0, 1);
-                    lengthNew++;
                     if ((fin.read(oneByte)) !=-1) {
                         baos.write(oneByte, 0, 1);
                         lengthNew++;
@@ -248,15 +226,13 @@ public class FileUtil {
                         }
                     }
                 }
-                else {
-                    baos.write(oneByte, 0, 1);
-                    lengthNew++;
-                }
             }
             baos.flush();
             result.put("skip",Long.toString(skipLength+lengthNew));
 
             result.put("content",baos.toString(encoding));
+            fin.close();
+            baos.close();
         }catch(Exception e){
 
             result.put("msg",e.getMessage());
@@ -265,7 +241,12 @@ public class FileUtil {
         return result;
     }
 
-    private static String getEncoding(byte[] first3bytes) {
+    private static String getEncoding(String fileName) throws IOException {
+        FileInputStream fin = new FileInputStream(fileName);
+        byte[] first3bytes = new byte[3];
+        fin.read(first3bytes);//找到文档的前三个字节并自动判断文档类型。
+
+        fin.close();
         if (first3bytes[0] == (byte) 0xEF && first3bytes[1] == (byte) 0xBB
                 && first3bytes[2] == (byte) 0xBF) {// utf-8
             return "UTF-8";
@@ -283,44 +264,53 @@ public class FileUtil {
         }
     }
 
+    private static long calculateSkipLength(String fileName, long skipLength) throws IOException {
+        if (skipLength == 0) {
+            return 0;
+        }
+        FileInputStream fin = new FileInputStream(fileName);
+        byte[] oneByte = new byte[1];
+        boolean paused = false;
+        if (skipLength<100) {
+            skipLength = (fin.available()-fin.available() % READ_LENGTH)*skipLength/100;
+        }
+        if (skipLength>=2) {
+            skipLength -= 2;
+        }
+        fin.skip(skipLength);
+        //对于直接跳转，需要找到回车换行
+        while ((fin.read(oneByte)) !=-1 && !paused) {
+            skipLength++;
+            if (oneByte[0] == 13) {
+                if ((fin.read(oneByte)) !=-1) {
+                    skipLength++;
+                    if (oneByte[0] == 10) {
+                        paused = true;
+                    }
+                }
+            }
+        }
+        fin.close();
+        return skipLength;
+    }
+
     public static Map<String, String> searchTextFile(String fileName, long skipLength, String searchContent) {
         Map<String,String> result = new HashMap<String, String>();
         try{
-            FileInputStream fin = new FileInputStream(fileName);
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            //获取字符集
+            String encoding = getEncoding(fileName);
+            skipLength = calculateSkipLength(fileName,skipLength);
+
+            ByteArrayOutputStream baos;
             int len = -1;
             byte[] buf = new byte[READ_LENGTH];
-            byte[] first3bytes = new byte[3];
             byte[] oneByte = new byte[1];
-            boolean paused = false;
+            boolean paused;
 
-            fin.read(first3bytes);//找到文档的前三个字节并自动判断文档类型。
-            String encoding = getEncoding(first3bytes);
-
-            fin = new FileInputStream(fileName);
+            FileInputStream fin = new FileInputStream(fileName);
             result.put("fileSize", Long.toString(fin.available()));
-            if (skipLength<100) {
-                skipLength = (fin.available()-fin.available() % READ_LENGTH)*skipLength/100;
-            }
-
-            fin.skip(skipLength-2);
-            //对于直接跳转，需要找到回车换行
-            while ((fin.read(oneByte)) !=-1 && !paused) {
-                if (oneByte[0] == 13) {
-                    skipLength++;
-                    if ((fin.read(oneByte)) !=-1) {
-                        skipLength++;
-                        if (oneByte[0] == 10) {
-                            paused = true;
-                        }
-                    }
-                }
-                else {
-                    skipLength++;
-                }
-            }
-            fin = new FileInputStream(fileName);
             fin.skip(skipLength);
+
             int lengthNew = 0;
             String content = "";
             boolean found = false;
@@ -332,9 +322,9 @@ public class FileUtil {
                 //对于结尾，需要找到回车换行
                 paused = false;
                 while ((fin.read(oneByte)) !=-1 && !paused) {
+                    baos.write(oneByte, 0, 1);
+                    lengthNew++;
                     if (oneByte[0] == 13) {
-                        baos.write(oneByte, 0, 1);
-                        lengthNew++;
                         if ((fin.read(oneByte)) !=-1) {
                             baos.write(oneByte, 0, 1);
                             lengthNew++;
@@ -343,10 +333,6 @@ public class FileUtil {
                             }
                         }
                     }
-                    else {
-                        baos.write(oneByte, 0, 1);
-                        lengthNew++;
-                    }
                 }
                 baos.flush();
                 content = baos.toString(encoding);
@@ -354,7 +340,7 @@ public class FileUtil {
                     found = true;
                 }
                 else {
-                    lengthNew +=len;
+                    lengthNew += len;
                 }
             }
             result.put("skip",Long.toString(skipLength + lengthNew));

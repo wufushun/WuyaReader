@@ -210,7 +210,7 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
 
     //启动时加载最后的记录
     private void loadLastFile() {
-        SharedPreferences userSettings = getSharedPreferences(PreferenceUtil.PREFERENCE_NAME, 0);
+        SharedPreferences userSettings = getSharedPreferences(PreferenceUtil.PREFERENCE_NAME, MODE_PRIVATE);
         String lastFile = userSettings.getString("lastFile","");
         skipLength = userSettings.getLong("skipLength",0);
         hrefEditText.setText(lastFile);

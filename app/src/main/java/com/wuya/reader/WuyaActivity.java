@@ -15,6 +15,7 @@ import android.preference.PreferenceManager;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
+import android.text.Layout;
 import android.text.TextUtils;
 import android.text.method.ScrollingMovementMethod;
 import android.util.Pair;
@@ -102,6 +103,8 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
     /** 设置字体大小 */
     float textSize;
 
+    private static int NUMBER_PER_PAGE = 250;
+
     // ================== 初始化参数设置开始 ==========================
     /**
      * 发布时请替换成自己申请的appId appKey 和 secretKey。注意如果需要离线合成功能,请在您申请的应用中填写包名。
@@ -120,12 +123,6 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
 
     // 主控制类，所有合成控制方法从这个类开始
     protected MySyntherizer synthesizer;
-
-    protected String DESC = "请先看完说明。之后点击“合成并播放”按钮即可正常测试。\n" +
-            "测试离线合成功能需要首次联网。\n" +
-            "纯在线请修改代码里ttsMode为TtsMode.ONLINE， 没有纯离线。\n" +
-            "本Demo的默认参数设置为wifi情况下在线合成, 其它网络（包括4G）使用离线合成。 在线普通女声发音，离线男声发音.\n" +
-            "合成可以多次调用，SDK内部有缓存队列，会依次完成。\n\n";
 
     private final String TAG = "WuyaActivity";
 
@@ -340,6 +337,8 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
             textSize = MAX_TEXT_SIZE;
         }
         contentTextView.setTextSize(TypedValue.COMPLEX_UNIT_PX,textSize);
+        resetNumberPerPage();
+        resetContent();
     }
 
     /**
@@ -353,6 +352,40 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
             textSize = MIN_TEXT_SIZE;
         }
         contentTextView.setTextSize(TypedValue.COMPLEX_UNIT_PX,textSize);
+        resetNumberPerPage();
+        resetContent();
+    }
+
+    //计算每页能显示多少字
+    private void resetNumberPerPage() {
+        //获取当前页总行数
+        contentTextView.getExtendedPaddingTop();
+        Layout layout = contentTextView.getLayout();
+        if (null == layout) {
+            return;
+        }
+        int lines = layout.getLineForVertical(contentScrollView.getHeight()-contentTextView.getLineHeight());
+        //获取当前页总字数
+        int currentNumber = layout.getLineEnd(lines);
+
+        if (currentNumber<NUMBER_PER_PAGE) {
+            NUMBER_PER_PAGE = currentNumber;
+        }
+        else {
+            NUMBER_PER_PAGE += 10;
+        }
+    }
+
+    //调整内容区
+    private void resetContent() {
+        String sentence = contentTextView.getText().toString();
+        if (sentence.length() > NUMBER_PER_PAGE) {
+            contentTextView.setText(sentence.substring(0, NUMBER_PER_PAGE - 1));
+            unfinishedContent = sentence.substring(NUMBER_PER_PAGE) + unfinishedContent;
+        } else if (sentence.length() < NUMBER_PER_PAGE) {
+            contentTextView.setText(sentence + unfinishedContent.substring(0, NUMBER_PER_PAGE - sentence.length() - 1));
+            unfinishedContent = unfinishedContent.substring(NUMBER_PER_PAGE - sentence.length());
+        }
     }
     /**
      * 界面上的按钮对应方法
@@ -549,7 +582,6 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
                     unfinishedContent = content;
                     finishedContent = "";
                 }
-
                 mainHandler.sendMessage(mainHandler.obtainMessage(UI_SPEECH_TEXT_FINISHED));
             }
         });
@@ -727,11 +759,11 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
             }
         }
         else {
-            if (unfinishedContent.length()>300) {
-                String sentence = unfinishedContent.substring(0, 300);
+            if (unfinishedContent.length()>NUMBER_PER_PAGE) {
+                String sentence = unfinishedContent.substring(0, NUMBER_PER_PAGE);
 
                 contentTextView.setText(sentence);
-                unfinishedContent = unfinishedContent.substring(300);
+                unfinishedContent = unfinishedContent.substring(NUMBER_PER_PAGE);
                 finishedContent += sentence;
             } else {
                 contentTextView.setText(unfinishedContent);
@@ -743,10 +775,10 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
 
     //上一句
     private void prevSentence() {
-        if(finishedContent.length()>300) {
-            String sentence = finishedContent.substring(finishedContent.length()-300);
+        if(finishedContent.length()>NUMBER_PER_PAGE) {
+            String sentence = finishedContent.substring(finishedContent.length()-NUMBER_PER_PAGE);
             contentTextView.setText(sentence);
-            finishedContent = finishedContent.substring(0,finishedContent.length()-300);
+            finishedContent = finishedContent.substring(0,finishedContent.length()-NUMBER_PER_PAGE);
             unfinishedContent = sentence+unfinishedContent;
         }
         else {
@@ -786,9 +818,7 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
 
         hrefEditText = (EditText) findViewById(R.id.hrefEditText);
 
-        contentTextView.setText(DESC);
-
-
+        contentTextView.setText(R.string.app_desc);
     }
 
     protected void toPrint(String str) {

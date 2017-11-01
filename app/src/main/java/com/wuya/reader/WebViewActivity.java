@@ -59,8 +59,8 @@ public class WebViewActivity extends AppCompatActivity implements MainHandlerCon
         //自适应屏幕
         webView.getSettings().setLayoutAlgorithm(WebSettings.LayoutAlgorithm.SINGLE_COLUMN);
         webView.getSettings().setLoadWithOverviewMode(true);
+        //是否显示图片
         boolean showPic = PreferenceManager.getDefaultSharedPreferences(this).getBoolean("showPic",true);
-
         webView.getSettings().setBlockNetworkImage(!showPic);
 
         webView.canGoBack();

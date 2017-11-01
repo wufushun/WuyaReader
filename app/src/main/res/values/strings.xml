@@ -1,7 +1,8 @@
 <resources>
 
     <string name="app_name">乌鸦读书</string>
-    <string name="app_author">乌饭树</string>
+    <string name="app_author">乌饭树 2017</string>
+    <string name="app_company">深圳乌鸦读书信息技术有限公司</string>
     <string name="app_desc">乌鸦读书针对阅读爱好者，使眼睛从海量的电子文字中得到片刻的解放，支持在线网站阅读和离线文本阅读，支持手势放大、缩小，翻页。\n乌鸦读书基于百度TTS开发，没有广告，完全免费，放心使用。\n
 乌鸦读书在持续完善中，如有什么好的建议和意见，欢迎反馈到乌鸦读书admin@wuyareader.com或QQ:280559127。\n
 </string>

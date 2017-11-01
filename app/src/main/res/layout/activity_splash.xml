@@ -28,6 +28,14 @@
         android:layout_height="wrap_content"
         android:orientation="vertical">
         <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@android:color/white"
+            android:layout_marginBottom="10dp"
+            android:text="@string/app_company"
+            android:layout_gravity="center"/>
+
+        <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:textColor="@android:color/white"

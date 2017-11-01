@@ -213,16 +213,18 @@ public class FileUtil {
                 lengthNew +=len;
                 baos.write(buf, 0, len);
             }
-            //对于结尾，需要找到回车换行
-            while ((fin.read(oneByte)) !=-1 && !paused) {
-                baos.write(oneByte, 0, 1);
-                lengthNew++;
-                if (oneByte[0] == 13) {
-                    if ((fin.read(oneByte)) !=-1) {
-                        baos.write(oneByte, 0, 1);
-                        lengthNew++;
-                        if (oneByte[0] == 10) {
-                            paused = true;
+            if(buf[len-1]!=10 || buf[len-2] != 13) {
+                //对于结尾，需要找到回车换行
+                while ((fin.read(oneByte)) != -1 && !paused) {
+                    baos.write(oneByte, 0, 1);
+                    lengthNew++;
+                    if (oneByte[0] == 13) {
+                        if ((fin.read(oneByte)) != -1) {
+                            baos.write(oneByte, 0, 1);
+                            lengthNew++;
+                            if (oneByte[0] == 10) {
+                                paused = true;
+                            }
                         }
                     }
                 }
@@ -318,18 +320,20 @@ public class FileUtil {
             {
                 baos = new ByteArrayOutputStream();
                 baos.write(buf, 0, len);
-
-                //对于结尾，需要找到回车换行
-                paused = false;
-                while ((fin.read(oneByte)) !=-1 && !paused) {
-                    baos.write(oneByte, 0, 1);
-                    lengthNew++;
-                    if (oneByte[0] == 13) {
-                        if ((fin.read(oneByte)) !=-1) {
-                            baos.write(oneByte, 0, 1);
-                            lengthNew++;
-                            if (oneByte[0] == 10) {
-                                paused = true;
+                lengthNew += len;
+                if(buf[len-1]!=10 || buf[len-2] != 13) {
+                    //对于结尾，需要找到回车换行
+                    paused = false;
+                    while ((fin.read(oneByte)) != -1 && !paused) {
+                        baos.write(oneByte, 0, 1);
+                        lengthNew++;
+                        if (oneByte[0] == 13) {
+                            if ((fin.read(oneByte)) != -1) {
+                                baos.write(oneByte, 0, 1);
+                                lengthNew++;
+                                if (oneByte[0] == 10) {
+                                    paused = true;
+                                }
                             }
                         }
                     }
@@ -338,9 +342,6 @@ public class FileUtil {
                 content = baos.toString(encoding);
                 if (content.contains(searchContent)) {
                     found = true;
-                }
-                else {
-                    lengthNew += len;
                 }
             }
             result.put("skip",Long.toString(skipLength + lengthNew));

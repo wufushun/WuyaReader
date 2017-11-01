@@ -222,7 +222,7 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
             else {
                 browseMode = BROWSE_FOLDER;
                 if (lastFile.indexOf("file:///")==-1) {
-                    readFile(skipLength, FileUtil.READ_LENGTH);
+                    readFile(skipLength);
                 }
             }
         }
@@ -408,7 +408,7 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
                     }
                     else {
                         browseMode = BROWSE_FOLDER;
-                        readFile(skipLength, FileUtil.READ_LENGTH);
+                        readFile(skipLength);
                     }
                 }
 
@@ -498,20 +498,15 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
                 @Override
                 public void jumpTo(int progress) {
                     if (browseMode == BROWSE_FOLDER) {
-                        if (fileSize > 0) {
-                            skipLength = (fileSize - fileSize % FileUtil.READ_LENGTH) / 100 * progress;
-                        } else {
-                            skipLength = progress;
-                        }
                         finishedContent = "";
                         unfinishedContent = "";
-                        readFile(skipLength, FileUtil.READ_LENGTH);
+                        readFile(progress);
                     }
                     else {
                         if (finishedContent.length()>0 || unfinishedContent.length()>0) {
                             skipLength = (finishedContent.length() + unfinishedContent.length()) * progress / 100;
-                            finishedContent = (finishedContent+unfinishedContent).substring(0,(int)skipLength);
-                            unfinishedContent = (finishedContent+unfinishedContent).substring((int)skipLength);
+                            finishedContent = (finishedContent + unfinishedContent).substring(0,(int)skipLength);
+                            unfinishedContent = (finishedContent + unfinishedContent).substring((int)skipLength);
                             nextSentence();
                         }
                     }
@@ -590,18 +585,18 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         skipLength = 0;
-        //浏览网页结果
+
         switch (requestCode) {
-            case BROWSE_FOLDER:
+            case BROWSE_FOLDER://浏览文件夹结果
                 Uri uri = data.getData();
                 if (resultCode == Activity.RESULT_OK) {
                     if (Build.VERSION.SDK_INT > Build.VERSION_CODES.KITKAT) {//4.4以后
                         hrefEditText.setText(FileUtil.getPath(this, uri));
                     }
-                    readFile(skipLength, FileUtil.READ_LENGTH);
+                    readFile(skipLength);
                 }
                 break;
-            case BROWSE_WEB:
+            case BROWSE_WEB://浏览网页结果
                 String url = data.getStringExtra("url");
                 if (null != url && !url.isEmpty()) {
                     hrefEditText.setText(url);
@@ -612,15 +607,12 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
     }
 
 
-    private void readFile(long position,int length) {
+    private void readFile(long position) {
         Map<String,String> result = FileUtil.openTextFile(hrefEditText.getText().toString(), position);
         skipLength = Long.parseLong(result.get("skip"));
         fileSize = Long.parseLong(result.get("fileSize"));
         unfinishedContent = result.get("content");
-//        unfinishedContent = FileUtil.openTextFile(hrefEditText.getText().toString(),position,length);
-        if (position == 0) {
-            finishedContent = "";
-        }
+        finishedContent = "";
         mainHandler.sendMessage(mainHandler.obtainMessage(UI_SPEECH_TEXT_FINISHED));
 
     }
@@ -641,7 +633,6 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
 
     /**
      * speak 实际上是调用 synthesize后，获取音频流，然后播放。
-     * 获取音频流的方式见SaveFileActivity及FileSaveListener
      * 需要合成的文本text的长度不能超过1024个GBK字节。
      */
     private void speak() {
@@ -744,7 +735,7 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
         if(unfinishedContent.length()==0) {
             contentTextView.setText("");
             if (browseMode == BROWSE_FOLDER) {
-                readFile(skipLength, FileUtil.READ_LENGTH);
+                readFile(skipLength);
 
                 if (unfinishedContent.length() == 0) {
                     stop();

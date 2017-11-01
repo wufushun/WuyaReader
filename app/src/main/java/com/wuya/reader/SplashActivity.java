@@ -1,15 +1,15 @@
 package com.wuya.reader;
 
+import android.app.Activity;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
-import android.support.v7.app.AppCompatActivity;
-import android.os.Bundle;
 
 import com.wuya.reader.util.PreferenceUtil;
 
-public class SplashActivity extends AppCompatActivity {
+public class SplashActivity extends Activity {
     private static final int TIME=3000;
     private static final int GO_MAIN=100;
     private static final int GO_GUIDE=101;

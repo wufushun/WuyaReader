@@ -38,7 +38,7 @@
                     android:layout_height="48dp"
                     android:background="@android:color/transparent"
                     android:layout_margin="2dp"
-                    app:srcCompat="@drawable/go_48" />
+                    android:src="@drawable/go_48" />
 
                 <ImageButton
                     android:id="@+id/webPageButton"
@@ -46,7 +46,7 @@
                     android:layout_height="48dp"
                     android:background="@android:color/transparent"
                     android:layout_margin="2dp"
-                    app:srcCompat="@drawable/browser" />
+                    android:src="@drawable/browser" />
 
                 <ImageButton
                     android:id="@+id/localFileButton"
@@ -54,7 +54,7 @@
                     android:layout_height="48dp"
                     android:background="@android:color/transparent"
                     android:layout_margin="2dp"
-                    app:srcCompat="@drawable/folder_48" />
+                    android:src="@drawable/folder_48" />
             </LinearLayout>
             <LinearLayout
                 android:layout_width="0px"
@@ -85,7 +85,7 @@
             android:layout_height="48dp"
             android:background="@android:color/transparent"
             android:layout_margin="2dp"
-            app:srcCompat="@drawable/search_48" />
+            android:src="@drawable/search_48" />
 
         <ImageButton
             android:id="@+id/playPauseButton"
@@ -94,7 +94,7 @@
             android:layout_height="48dp"
             android:background="@android:color/transparent"
             android:layout_margin="2dp"
-            app:srcCompat="@drawable/play_48" />
+            android:src="@drawable/play_48" />
 
         <ImageButton
             android:id="@+id/settingsButton"
@@ -103,7 +103,7 @@
             android:layout_height="48dp"
             android:background="@android:color/transparent"
             android:layout_margin="2dp"
-            app:srcCompat="@drawable/settings_48" />
+            android:src="@drawable/settings_48" />
     </LinearLayout>
 
 </LinearLayout>

@@ -102,4 +102,6 @@
         <item>GB2312</item>
         <item>GBK</item>
     </string-array>
+    <string name="pref_title_show_pic">显示图片</string>
+    <string name="pref_desc_show_pic">浏览网页时是否显示图片</string>
 </resources>

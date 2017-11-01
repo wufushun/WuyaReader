@@ -44,7 +44,7 @@
 
             <ImageButton
                 android:id="@+id/searchButton"
-                app:srcCompat="@drawable/searchview_32"
+                android:src="@drawable/searchview_32"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:layout_margin="2dp"

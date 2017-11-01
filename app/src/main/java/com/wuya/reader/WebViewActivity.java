@@ -3,6 +3,7 @@ package com.wuya.reader;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.support.v7.app.AppCompatActivity;
 import android.view.KeyEvent;
 import android.view.View;
@@ -58,6 +59,9 @@ public class WebViewActivity extends AppCompatActivity implements MainHandlerCon
         //自适应屏幕
         webView.getSettings().setLayoutAlgorithm(WebSettings.LayoutAlgorithm.SINGLE_COLUMN);
         webView.getSettings().setLoadWithOverviewMode(true);
+        boolean showPic = PreferenceManager.getDefaultSharedPreferences(this).getBoolean("showPic",true);
+
+        webView.getSettings().setBlockNetworkImage(!showPic);
 
         webView.canGoBack();
         webView.canGoForward();

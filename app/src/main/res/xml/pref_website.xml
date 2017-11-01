@@ -12,4 +12,11 @@
         android:positiveButtonText="@null"
         android:title="@string/pref_title_encoding" />
 
+    <SwitchPreference
+        android:key="showPic"
+        android:defaultValue="true"
+        android:negativeButtonText="@null"
+        android:positiveButtonText="@null"
+        android:title="@string/pref_title_show_pic"
+        android:summary="@string/pref_desc_show_pic"/>
 </PreferenceScreen>

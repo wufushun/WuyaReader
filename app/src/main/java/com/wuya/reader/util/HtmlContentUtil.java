@@ -100,6 +100,7 @@ public class HtmlContentUtil {
             String temp = orientContent.substring(orientContent.indexOf("目录</a>")+6);
             if(temp.contains("<a href=\"")) {
                 temp = temp.substring(temp.indexOf("<a href=\"") + 9, temp.indexOf("\" id=\"pb_next\""));
+                temp = temp.substring(temp.lastIndexOf("/")+1);
                 if (temp.equals("./")) {
                     nextUrl = url.substring(0,url.lastIndexOf("/"));
                 }

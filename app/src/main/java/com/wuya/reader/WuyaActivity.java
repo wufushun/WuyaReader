@@ -421,7 +421,7 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
                 //打开当前页面
                 intent = new Intent(this, WebViewActivity.class);
 
-                if (!url.contains("http://") && !url.contains("http://")) {
+                if (!url.contains("http://") && !url.contains("https://")) {
                     url = "";
                 }
                 intent.putExtra("url",url);

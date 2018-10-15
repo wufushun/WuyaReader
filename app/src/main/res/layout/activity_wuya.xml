@@ -17,10 +17,15 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:orientation="vertical">
+
+            <LinearLayout
+                android:layout_width="0px"
+                android:layout_height="0px" />
+
             <LinearLayout
                 android:layout_width="fill_parent"
+                android:layout_height="60dp"
                 android:layout_marginTop="10dp"
-                android:layout_height="80dp"
                 android:focusable="true"
                 android:focusableInTouchMode="true"
                 android:orientation="horizontal">
@@ -29,36 +34,34 @@
                     android:id="@+id/hrefEditText"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:hint="@string/href"
-                    android:layout_weight="1"/>
+                    android:layout_weight="1"
+                    android:hint="@string/href" />
 
                 <ImageButton
                     android:id="@+id/goButton"
-                    android:layout_width="48dp"
-                    android:layout_height="48dp"
-                    android:background="@android:color/transparent"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
                     android:layout_margin="2dp"
+                    android:background="@android:color/transparent"
                     android:src="@drawable/go_48" />
 
                 <ImageButton
                     android:id="@+id/webPageButton"
-                    android:layout_width="48dp"
-                    android:layout_height="48dp"
-                    android:background="@android:color/transparent"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
                     android:layout_margin="2dp"
+                    android:background="@android:color/transparent"
                     android:src="@drawable/browser" />
 
                 <ImageButton
                     android:id="@+id/localFileButton"
-                    android:layout_width="48dp"
-                    android:layout_height="48dp"
-                    android:background="@android:color/transparent"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
                     android:layout_margin="2dp"
+                    android:background="@android:color/transparent"
                     android:src="@drawable/folder_48" />
             </LinearLayout>
-            <LinearLayout
-                android:layout_width="0px"
-                android:layout_height="0px" />
+
             <ScrollView
                 android:id="@+id/contentScrollView"
                 android:layout_width="match_parent"
@@ -82,7 +85,7 @@
             android:id="@+id/mainSearchButton"
             android:layout_width="0dp"
             android:layout_weight="1"
-            android:layout_height="48dp"
+            android:layout_height="32dp"
             android:background="@android:color/transparent"
             android:layout_margin="2dp"
             android:src="@drawable/search_48" />
@@ -91,7 +94,7 @@
             android:id="@+id/playPauseButton"
             android:layout_width="0dp"
             android:layout_weight="1"
-            android:layout_height="48dp"
+            android:layout_height="32dp"
             android:background="@android:color/transparent"
             android:layout_margin="2dp"
             android:src="@drawable/play_48" />
@@ -100,7 +103,7 @@
             android:id="@+id/settingsButton"
             android:layout_width="0dp"
             android:layout_weight="1"
-            android:layout_height="48dp"
+            android:layout_height="32dp"
             android:background="@android:color/transparent"
             android:layout_margin="2dp"
             android:src="@drawable/settings_48" />

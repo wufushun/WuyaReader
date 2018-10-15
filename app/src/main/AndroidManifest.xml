@@ -39,6 +39,11 @@
             android:name=".SettingsActivity"
             android:label="@string/title_settings"/>
         <activity android:name=".WebViewActivity"/>
+        <receiver android:name="com.wuya.reader.listener.HeadsetButtonReceiver">
+            <intent-filter android:priority="1000">
+                <action android:name="android.intent.action.MEDIA_BUTTON" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>

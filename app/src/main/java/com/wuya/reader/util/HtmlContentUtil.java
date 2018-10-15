@@ -379,6 +379,9 @@ public class HtmlContentUtil {
             orientContent = orientContent.substring(orientContent.indexOf("<body")+5);
         }
         orientContent = orientContent.replaceAll("[a-zA-Z0-9]|[|\\[\\]\\^._<>=\"-/:_';@{}\\\\]","");
+        orientContent = orientContent.replaceAll("[\t|\r|\n|\\s*]","\n");
+        orientContent = orientContent.replaceAll("\n\n","\n        ");
+
         return orientContent;
     }
 }

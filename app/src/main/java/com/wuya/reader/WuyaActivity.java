@@ -2,10 +2,14 @@ package com.wuya.reader;
 
 import android.Manifest;
 import android.app.Activity;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.media.AudioManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -51,7 +55,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class WuyaActivity extends AppCompatActivity implements MainHandlerConstant,View.OnClickListener, View.OnTouchListener {
+public class WuyaActivity extends AppCompatActivity implements MainHandlerConstant, View.OnClickListener, View.OnTouchListener {
 
     private TextView contentTextView;
     private ScrollView contentScrollView;
@@ -95,34 +99,36 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
     private static final int ZOOM = 2;// 按下第二个点
     private static int mode = 0;
     /**最小字体*/
-    public static final float MIN_TEXT_SIZE = 10f;
+    private static final float MIN_TEXT_SIZE = 10f;
 
     /**最大字体*/
-    public static final float MAX_TEXT_SIZE = 100.0f;
+    private static final float MAX_TEXT_SIZE = 100.0f;
 
     /** 设置字体大小 */
-    float textSize;
+    private float textSize;
 
-    private static int NUMBER_PER_PAGE = 250;
+    private static int NUMBER_PER_PAGE = 280;
 
     // ================== 初始化参数设置开始 ==========================
     /**
      * 发布时请替换成自己申请的appId appKey 和 secretKey。注意如果需要离线合成功能,请在您申请的应用中填写包名。
      * 本demo的包名是com.baidu.tts.sample，定义在build.gradle中。
      */
-    protected String appId = "10242891";
+    private String appId = "10242891";
 
-    protected String appKey = "WlfOtQqoMmQv3CbClDyuQskp";
+    private String appKey = "WlfOtQqoMmQv3CbClDyuQskp";
 
-    protected String secretKey = "87cfb0d49e2f466f318b422e26aa9d74";
+    private String secretKey = "87cfb0d49e2f466f318b422e26aa9d74";
 
     // TtsMode.MIX; 离在线融合，在线优先； TtsMode.ONLINE 纯在线； 没有纯离线
-    protected TtsMode ttsMode = TtsMode.MIX;
+    private TtsMode ttsMode = TtsMode.MIX;
 
     // ===============初始化参数设置完毕，更多合成参数请至getParams()方法中设置 =================
 
     // 主控制类，所有合成控制方法从这个类开始
-    protected MySyntherizer synthesizer;
+    private MySyntherizer synthesizer;
+
+    private BroadcastReceiver mReceiver;
 
     private final String TAG = "WuyaActivity";
 
@@ -145,6 +151,40 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
             }
 
         };
+
+        mReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                String action = intent.getAction();
+//                Toast.makeText(getApplicationContext(), action, Toast.LENGTH_SHORT).show();
+                if (AudioManager.ACTION_AUDIO_BECOMING_NOISY.equals(intent.getAction())) {
+                    //耳机拔出时，可以停止播放
+                    setPlayPauseButton(PLAY_PAUSE);
+                }
+                if (AudioManager.ACTION_HEADSET_PLUG.equals(intent.getAction())) {
+                    KeyEvent event = (KeyEvent)intent.getParcelableExtra(Intent.EXTRA_KEY_EVENT);  //判断有没有耳机按键事件
+                    if(event==null) return;                       //过滤按下事件
+                    int keyCode = event.getKeyCode();
+//                    Toast.makeText(getApplicationContext(), String.valueOf(keyCode), Toast.LENGTH_SHORT).show();
+                    if (keyCode == KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE || keyCode == KeyEvent.KEYCODE_HEADSETHOOK) {
+                        play_pause();
+                    }
+                }
+            }
+        };
+
+        //注册广播接收器，给广播接收器添加可以接收的广播Action
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(AudioManager.ACTION_AUDIO_BECOMING_NOISY);
+        filter.addAction(AudioManager.ACTION_HDMI_AUDIO_PLUG);
+        filter.addAction(Intent.ACTION_MEDIA_BUTTON);
+        filter.addAction(Intent.ACTION_HEADSET_PLUG);
+        filter.addAction(Intent.CATEGORY_VOICE);
+        filter.addAction(Intent.EXTRA_KEY_EVENT);
+        filter.addAction(Intent.ACTION_ANSWER);
+        filter.setPriority(IntentFilter.SYSTEM_HIGH_PRIORITY);
+        filter.addCategory(Intent.CATEGORY_APP_MUSIC);
+        registerReceiver(mReceiver, filter);
 
         HttpsUtil.initHttpsUrlConnection(this);
 
@@ -178,7 +218,7 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
      *
      * @return
      */
-    protected Map<String, String> getParams() {
+    private Map<String, String> getParams() {
         Map<String, String> params = new HashMap<String, String>();
         // 以下参数均为选填
         String volume=PreferenceManager.getDefaultSharedPreferences(this).getString("volume","5");
@@ -232,6 +272,9 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
     protected void onDestroy() {
         //记住最后的文章和位置
         rememberSkip();
+        //注销广播
+        unregisterReceiver(mReceiver);
+
         synthesizer.release();
         super.onDestroy();
     }
@@ -329,7 +372,7 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
     /**
      * 放大
      */
-    protected void zoomOut()
+    private void zoomOut()
     {
         textSize += 0.5f;;
         if (textSize > MAX_TEXT_SIZE)
@@ -344,7 +387,7 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
     /**
      * 缩小
      */
-    protected void zoomIn()
+    private void zoomIn()
     {
         textSize -= 0.5f;;
         if (textSize < MIN_TEXT_SIZE)
@@ -438,24 +481,11 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
                 startActivityForResult(intent,BROWSE_FOLDER);
             case R.id.mainSearchButton:
                 setPlayPauseButton(PLAY_PAUSE);
-                stop();
                 showSearchView();
 
                 break;
             case R.id.playPauseButton:
-                if(PLAY_STATE == PLAY_PAUSE) {
-                    // 合成前可以修改参数：
-                    Map<String, String> params = getParams();
-                    synthesizer.setParams(params);
-                    loadModel();
-
-                    speak();
-                    setPlayPauseButton(PLAY_NORMAL);
-                }
-                else {
-                    setPlayPauseButton(PLAY_PAUSE);
-                }
-
+                play_pause();
                 break;
             case R.id.settingsButton:
                 setPlayPauseButton(PLAY_PAUSE);
@@ -486,6 +516,21 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
                 stop();
                 btnPlayPause.setImageDrawable(getResources().getDrawable(R.drawable.play_48,getTheme()));
                 PLAY_STATE = PLAY_PAUSE;
+        }
+    }
+
+    private void play_pause() {
+        if(PLAY_STATE == PLAY_PAUSE) {
+            // 合成前可以修改参数：
+            Map<String, String> params = getParams();
+            synthesizer.setParams(params);
+            loadModel();
+
+            speak();
+            setPlayPauseButton(PLAY_NORMAL);
+        }
+        else {
+            setPlayPauseButton(PLAY_PAUSE);
         }
     }
 
@@ -686,7 +731,8 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
         checkResult(result, "stop");
     }
 
-    protected void handle(Message msg) {
+    private void handle(Message msg) {
+
         switch (msg.what) {
             case INIT_SUCCESS:
                 btnWebPage.setEnabled(true);
@@ -721,7 +767,7 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
 //                break;
             case UI_SPEECH_TEXT_FINISHED:
                 nextSentence();
-                if(!contentTextView.getText().toString().isEmpty()) {
+                if (PLAY_STATE == PLAY_NORMAL) {
                     speak();
                 }
                 break;
@@ -735,16 +781,17 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
         if(unfinishedContent.length()==0) {
             contentTextView.setText("");
             if (browseMode == BROWSE_FOLDER) {
+                rememberSkip();
                 readFile(skipLength);
 
                 if (unfinishedContent.length() == 0) {
-                    stop();
                     setPlayPauseButton(PLAY_PAUSE);
                 }
             } else {
-                stop();
                 if (!nextUrl.isEmpty()) {
                     hrefEditText.setText(nextUrl);
+                    rememberSkip();
+                    skipLength = 0;
                     browseWebPage(nextUrl);
                 }
             }
@@ -812,7 +859,7 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
         contentTextView.setText(R.string.app_desc);
     }
 
-    protected void toPrint(String str) {
+    private void toPrint(String str) {
         Message msg = Message.obtain();
         msg.obj = str;
         mainHandler.sendMessage(msg);
@@ -862,6 +909,12 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         if (keyCode == KeyEvent.KEYCODE_BACK) {
             exit();
+            return false;
+        }
+//        Toast.makeText(getApplicationContext(), String.valueOf(keyCode),
+//                Toast.LENGTH_SHORT).show();
+        if (keyCode == KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE || keyCode == KeyEvent.KEYCODE_HEADSETHOOK) {
+            play_pause();
             return false;
         }
         return super.onKeyDown(keyCode, event);

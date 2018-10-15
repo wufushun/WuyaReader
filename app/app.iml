@@ -95,6 +95,7 @@
     <orderEntry type="jdk" jdkName="Android API 25 Platform" jdkType="Android SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" exported="" name="com.android.support:animated-vector-drawable-25.3.1" level="project" />
+    <orderEntry type="library" exported="" name="__local_jars__:I.\Java\WuyaReader\app\libs\com.baidu.tts_2.3.2.20180713_6101c2a.jar:unspecified@jar" level="project" />
     <orderEntry type="library" exported="" name="com.android.support:transition-25.3.1" level="project" />
     <orderEntry type="library" exported="" name="com.android.support:design-25.3.1" level="project" />
     <orderEntry type="library" exported="" name="com.android.support:support-core-ui-25.3.1" level="project" />
@@ -105,7 +106,6 @@
     <orderEntry type="library" exported="" name="com.android.support.constraint:constraint-layout-1.0.2" level="project" />
     <orderEntry type="library" exported="" name="com.android.support:support-vector-drawable-25.3.1" level="project" />
     <orderEntry type="library" exported="" name="com.android.support:support-v4-25.3.1" level="project" />
-    <orderEntry type="library" exported="" name="__local_jars__:I.\Java\WuyaReader\app\libs\com.baidu.tts_2.3.1.20170808_e39ea89.jar:unspecified@jar" level="project" />
     <orderEntry type="library" exported="" name="com.android.support:support-fragment-25.3.1" level="project" />
     <orderEntry type="library" exported="" name="com.android.support:recyclerview-v7-25.3.1" level="project" />
     <orderEntry type="library" exported="" name="com.android.support:support-annotations:25.3.1@jar" level="project" />

@@ -690,8 +690,7 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
         }
         //需要合成的文本text的长度不能超过1024个GBK字节。
         if (TextUtils.isEmpty(contentTextView.getText())) {
-            text = "欢迎使用乌鸦读书,百度语音为你提供支持。";
-            contentTextView.setText(text);
+            return;
         }
 
         int result;

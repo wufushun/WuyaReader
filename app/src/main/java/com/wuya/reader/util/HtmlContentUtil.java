@@ -46,6 +46,10 @@ public class HtmlContentUtil {
         else if (url.contains("www.99lib.net")) {
             return get99libContent(url,orientContent);
         }
+        //落霞小说
+        else if (url.contains("www.luoxia.com")) {
+            return getLuoxiaContent(url,orientContent);
+        }
         //缺省为笔趣岛
         else {
             return getBiqudaoContent(url,orientContent);
@@ -369,6 +373,63 @@ public class HtmlContentUtil {
         return result;
     }
 
+
+    /**
+     * 落霞小说
+     * @param url
+     * @param orientContent
+     * @return
+     */
+    private static Map<String, String> getLuoxiaContent(String url, String orientContent) {
+        Map<String, String> result = new HashMap<String, String>(2);
+        String nextUrl = "";
+
+        if (orientContent.contains("<div id=\"nr1\">")) {
+            orientContent = orientContent.substring(orientContent.indexOf("<div id=\"nr1\">") + 14);
+        }
+        if (orientContent.contains("<li class=\"next\">下一章：<a href=\"")) {
+            String temp = orientContent.substring(orientContent.indexOf("<li class=\"next\">下一章：<a href=\"")+30);
+            if(temp.contains("\" rel=\"next\">")) {
+                nextUrl = temp.substring(0, temp.indexOf("\" rel=\"next\">"));
+            }
+        }
+        if (orientContent.contains("<div id=\"anchor\" class=\"ggad clearfix\">")) {
+            orientContent = orientContent.substring(0, orientContent.indexOf("<div id=\"anchor\" class=\"ggad clearfix\">"));
+        }
+
+        result.put("nextUrl", nextUrl);
+        result.put("orientContent", getGeneralContent(orientContent));
+        return result;
+    }
+
+    /**
+     * sogo小说
+     * @param url
+     * @param orientContent
+     * @return
+     */
+    private static Map<String, String> getSogoContent(String url, String orientContent) {
+        Map<String, String> result = new HashMap<String, String>(2);
+        String nextUrl = "";
+
+        if (orientContent.contains("<div id=\"nr1\">")) {
+            orientContent = orientContent.substring(orientContent.indexOf("<div id=\"nr1\">") + 14);
+        }
+        if (orientContent.contains("<li class=\"next\">下一章：<a href=\"")) {
+            String temp = orientContent.substring(orientContent.indexOf("<li class=\"next\">下一章：<a href=\"")+30);
+            if(temp.contains("\" rel=\"next\">")) {
+                nextUrl = temp.substring(0, temp.indexOf("\" rel=\"next\">"));
+            }
+        }
+        if (orientContent.contains("<div id=\"anchor\" class=\"ggad clearfix\">")) {
+            orientContent = orientContent.substring(0, orientContent.indexOf("<div id=\"anchor\" class=\"ggad clearfix\">"));
+        }
+
+        result.put("nextUrl", nextUrl);
+        result.put("orientContent", getGeneralContent(orientContent));
+        return result;
+    }
+
     /**
      * 通用处理
      * @param orientContent
@@ -378,8 +439,9 @@ public class HtmlContentUtil {
         if (orientContent.contains("<body")) {
             orientContent = orientContent.substring(orientContent.indexOf("<body")+5);
         }
-        orientContent = orientContent.replaceAll("[a-zA-Z0-9]|[|\\[\\]\\^._<>=\"-/:_';@{}\\\\]","");
         orientContent = orientContent.replaceAll("[\t|\r|\n|\\s*]","\n");
+        orientContent = orientContent.replaceAll("<p>","        ");
+        orientContent = orientContent.replaceAll("[a-zA-Z0-9]|[|\\[\\]\\^._<>=\"-/:_';@{}\\\\]","");
         orientContent = orientContent.replaceAll("\n\n","\n        ");
 
         return orientContent;

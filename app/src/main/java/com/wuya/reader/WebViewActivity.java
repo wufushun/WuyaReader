@@ -7,6 +7,7 @@ import android.preference.PreferenceManager;
 import android.support.v7.app.AppCompatActivity;
 import android.view.KeyEvent;
 import android.view.View;
+import android.webkit.JavascriptInterface;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
@@ -15,6 +16,10 @@ import android.webkit.WebViewClient;
 import android.widget.ImageButton;
 
 import com.wuya.reader.util.ADFilterTool;
+import com.wuya.reader.util.HtmlContentUtil;
+
+import java.util.HashMap;
+import java.util.Map;
 
 public class WebViewActivity extends AppCompatActivity implements MainHandlerConstant,View.OnClickListener {
 
@@ -26,6 +31,8 @@ public class WebViewActivity extends AppCompatActivity implements MainHandlerCon
     private ImageButton btnHome;
 
     private static String currentUrl = "";
+
+    private static Map<String, String> resultMap = new HashMap<>();
 
     private static final String HOME_URL = "file:///android_asset/main.html";
     @Override
@@ -65,6 +72,8 @@ public class WebViewActivity extends AppCompatActivity implements MainHandlerCon
 
         webView.canGoBack();
         webView.canGoForward();
+        webView.addJavascriptInterface(new InJavaScriptLocalObj(), "java_obj");
+
         //覆盖WebView默认使用第三方或系统默认浏览器打开网页的行为，使网页用WebView打开
         webView.setWebViewClient(new WebViewClient(){
             @Override
@@ -97,6 +106,15 @@ public class WebViewActivity extends AppCompatActivity implements MainHandlerCon
                 super.onPageStarted(view, url, favicon);
             }
 
+            //加载结束
+            @Override
+            public void onPageFinished(WebView view, String url) {
+                // 获取页面内容
+                view.loadUrl("javascript:window.java_obj.getSource("
+                        + "document.getElementsByTagName('html')[0].innerHTML);");
+                super.onPageFinished(view, url);
+            }
+
         });
 
         btnPlay = (ImageButton) findViewById(R.id.reader);
@@ -124,6 +142,8 @@ public class WebViewActivity extends AppCompatActivity implements MainHandlerCon
                     url = url.substring(0,url.indexOf("?"));
                 }
                 intent.putExtra("url",url);
+                intent.putExtra("nextUrl", resultMap.get("nextUrl"));
+                intent.putExtra("orientContent", resultMap.get("orientContent"));
                 setResult(RESULT_OK, intent);
                 this.finish();
                 break;
@@ -147,12 +167,20 @@ public class WebViewActivity extends AppCompatActivity implements MainHandlerCon
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         if (event.getKeyCode() == KeyEvent.KEYCODE_BACK) {
-            //返回主页
-            Intent intent =new Intent();
-
-            setResult(RESULT_CANCELED, intent);
-            this.finish();
+            webView.goBack();
+            return false;
         }
         return super.onKeyDown(keyCode, event);
+    }
+
+
+    //自己定义的类
+    final class InJavaScriptLocalObj {
+        //一定也要加上这个注解,否则没有用
+        @JavascriptInterface
+        public void getSource(String html) {
+            //取出HTML中P标签的文本内容,利用正则表达式匹配.
+            resultMap = HtmlContentUtil.getHtmlContent(currentUrl, html);
+        }
     }
 }

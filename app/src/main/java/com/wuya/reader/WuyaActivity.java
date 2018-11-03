@@ -256,8 +256,8 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
         hrefEditText.setText(lastFile);
         if (!lastFile.isEmpty()) {
             if (lastFile.contains("http://") || lastFile.contains("https://")) {
-                browseMode = BROWSE_WEB;
-                browseWebPage(lastFile);
+//                browseMode = BROWSE_WEB;
+//                browseWebPage(lastFile);
             }
             else {
                 browseMode = BROWSE_FOLDER;
@@ -643,9 +643,20 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
                 break;
             case BROWSE_WEB://浏览网页结果
                 String url = data.getStringExtra("url");
-                if (null != url && !url.isEmpty()) {
-                    hrefEditText.setText(url);
-                    browseWebPage(url);
+                nextUrl = data.getStringExtra("nextUrl");
+                if (nextUrl.isEmpty()) {
+                    if (null != url && !url.isEmpty()) {
+                        hrefEditText.setText(url);
+                        browseWebPage(url);
+                    }
+                }
+                else {
+                    if (null != url && !url.isEmpty()) {
+                        hrefEditText.setText(url);
+                    }
+                    unfinishedContent = data.getStringExtra("orientContent");
+                    finishedContent = "";
+                    mainHandler.sendMessage(mainHandler.obtainMessage(UI_SPEECH_TEXT_FINISHED));
                 }
                 break;
         }

@@ -169,6 +169,8 @@ public class WebViewActivity extends AppCompatActivity implements MainHandlerCon
         if (event.getKeyCode() == KeyEvent.KEYCODE_BACK) {
             webView.goBack();
             return false;
+        } else if (event.getKeyCode() == KeyEvent.ACTION_DOWN) {
+            webView.pageDown(false);
         }
         return super.onKeyDown(keyCode, event);
     }

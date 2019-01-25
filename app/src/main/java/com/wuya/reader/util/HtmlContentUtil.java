@@ -50,9 +50,12 @@ public class HtmlContentUtil {
         else if (url.contains("www.luoxia.com")) {
             return getLuoxiaContent(url,orientContent);
         }
-        //缺省为笔趣岛
+        //缺省
         else {
-            return getBiqudaoContent(url,orientContent);
+            Map<String, String> result = new HashMap<String, String>(2);
+            result.put("nextUrl", url);
+            result.put("orientContent", getGeneralContent(orientContent));
+            return result;
         }
 
 
@@ -439,9 +442,31 @@ public class HtmlContentUtil {
         if (orientContent.contains("<body")) {
             orientContent = orientContent.substring(orientContent.indexOf("<body")+5);
         }
+        if (orientContent.contains("</body")) {
+            orientContent = orientContent.substring(0,orientContent.indexOf("</body"));
+        }
         orientContent = orientContent.replaceAll("[\t|\r|\n|\\s*]","\n");
         orientContent = orientContent.replaceAll("<p>","        ");
         orientContent = orientContent.replaceAll("[a-zA-Z0-9]|[|\\[\\]\\^._<>=\"-/:_';@{}\\\\]","");
+        orientContent = orientContent.replaceAll("\n\n","\n        ");
+
+        return orientContent;
+    }
+    /**
+     * 通用处理
+     * @param orientContent
+     * @return
+     */
+    private static String getGeneralContentWithCharAndNum(String orientContent) {
+        if (orientContent.contains("<body")) {
+            orientContent = orientContent.substring(orientContent.indexOf("<body")+5);
+        }
+        orientContent = orientContent.replaceAll("[\t|\r|\n|\\s*]","\n");
+        orientContent = orientContent.replaceAll("<p>","        ");
+        orientContent = orientContent.replaceAll("</p>","");
+        orientContent = orientContent.replaceAll("<em>","");
+        orientContent = orientContent.replaceAll("</em>","");
+        orientContent = orientContent.replaceAll("[|\\[\\]\\^._<>=\"-/:_';@{}\\\\]","");
         orientContent = orientContent.replaceAll("\n\n","\n        ");
 
         return orientContent;

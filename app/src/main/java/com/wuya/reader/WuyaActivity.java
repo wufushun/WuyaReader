@@ -107,7 +107,7 @@ public class WuyaActivity extends AppCompatActivity implements MainHandlerConsta
     /** 设置字体大小 */
     private float textSize;
 
-    private static int NUMBER_PER_PAGE = 280;
+    private static int NUMBER_PER_PAGE = 400;
 
     // ================== 初始化参数设置开始 ==========================
     /**

@@ -24,7 +24,7 @@
 
             <LinearLayout
                 android:layout_width="fill_parent"
-                android:layout_height="60dp"
+                android:layout_height="50dp"
                 android:layout_marginTop="10dp"
                 android:focusable="true"
                 android:focusableInTouchMode="true"
@@ -66,12 +66,13 @@
                 android:id="@+id/contentScrollView"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent">
+
                 <TextView
                     android:id="@+id/contentTextView"
-                    android:minLines="15"
-                    android:textSize="20sp"
                     android:layout_width="match_parent"
-                    android:layout_height="match_parent" />
+                    android:layout_height="wrap_content"
+                    android:minLines="15"
+                    android:textSize="20sp" />
             </ScrollView>
         </LinearLayout>
     </FrameLayout>

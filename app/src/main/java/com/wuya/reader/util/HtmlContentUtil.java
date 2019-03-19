@@ -50,6 +50,10 @@ public class HtmlContentUtil {
         else if (url.contains("www.luoxia.com")) {
             return getLuoxiaContent(url,orientContent);
         }
+        //幻月小说
+        else if (url.contains("m.huanyue123.com")) {
+            return getHuanyueContent(url,orientContent);
+        }
         //缺省
         else {
             Map<String, String> result = new HashMap<String, String>(2);
@@ -73,6 +77,7 @@ public class HtmlContentUtil {
         if (orientContent.contains("<div id=\"content\">")) {
             orientContent = orientContent.substring(orientContent.indexOf("<div id=\"content\">") + 18);
         }
+        orientContent = orientContent.replace("章节错误,点此举报","");
         if (orientContent.contains("var nextpage=\"")) {
             String temp = orientContent.substring(orientContent.indexOf("var nextpage=\"")+14);
             if (temp.substring(0,temp.indexOf("\"")).equals("./")) {
@@ -430,6 +435,38 @@ public class HtmlContentUtil {
 
         result.put("nextUrl", nextUrl);
         result.put("orientContent", getGeneralContent(orientContent));
+        return result;
+    }
+
+    /**
+     * 幻月小说
+     * @param url
+     * @param orientContent
+     * @return
+     */
+    private static Map<String, String> getHuanyueContent(String url, String orientContent) {
+        Map<String, String> result = new HashMap<String, String>(2);
+        String nextUrl = "";
+
+        String title = "";
+        if (orientContent.contains("<title>") && orientContent.contains("_幻月书院</title>")) {
+            title = orientContent.substring(orientContent.indexOf("<title>") + 7,orientContent.indexOf("_幻月书院</title>"));
+        }
+        if (orientContent.contains(" id=\"pt_next\" class=\"Readpage_down js_page_down\">下一章</a>")) {
+            String temp = orientContent.substring(orientContent.indexOf("目录</a>\n<a href=\"") + 16,orientContent.indexOf("\" id=\"pt_next\" class=\"Readpage_down js_page_down\">下一章</a>"));
+            nextUrl = "http://m.huanyue123.com"+temp;
+        }
+        if (orientContent.contains("章节错误,点此举报(免注册)")) {
+            orientContent = orientContent.substring(orientContent.indexOf("章节错误,点此举报(免注册)") + 14, orientContent.indexOf("加入书签，方便阅读"));
+        }
+        if (orientContent.contains("『加入书签，方便阅读』")) {
+            orientContent = orientContent.substring(0, orientContent.indexOf("『加入书签，方便阅读』"));
+        }
+
+        orientContent = orientContent.replaceAll("&nbsp;"," ");
+        orientContent = orientContent.replaceAll("<br/>","\n");
+        result.put("nextUrl", nextUrl);
+        result.put("orientContent", title + getGeneralContent(orientContent));
         return result;
     }
 

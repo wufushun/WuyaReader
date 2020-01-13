@@ -54,6 +54,10 @@ public class HtmlContentUtil {
         else if (url.contains("m.huanyue123.com")) {
             return getHuanyueContent(url,orientContent);
         }
+        //2txt小说
+        else if (url.contains("wap.2txt.cc")) {
+            return get2TxtContent(url,orientContent);
+        }
         //缺省
         else {
             Map<String, String> result = new HashMap<String, String>(2);
@@ -467,6 +471,40 @@ public class HtmlContentUtil {
         orientContent = orientContent.replaceAll("<br/>","\n");
         result.put("nextUrl", nextUrl);
         result.put("orientContent", title + getGeneralContent(orientContent));
+        return result;
+    }
+
+    /**
+     * 2txt小说
+     * @param url
+     * @param orientContent
+     * @return
+     */
+    private static Map<String, String> get2TxtContent(String url, String orientContent) {
+        Map<String, String> result = new HashMap<String, String>(2);
+        String nextUrl = "";
+
+        String title = "";
+        if (orientContent.contains("<title>") && orientContent.contains("最新更新章节-TXT全集下载-2txt手机阅读")) {
+            title = orientContent.substring(orientContent.indexOf("<title>") + 7,orientContent.indexOf("最新更新章节-TXT全集下载-2txt手机阅读"));
+        }
+        String content = orientContent.substring(orientContent.indexOf("<article id=\"nr\">")+16, orientContent.indexOf("<div class=\"nr_page\">"))
+
+        if (orientContent.contains(">下一章</a>")) {
+            String temp = orientContent.substring(orientContent.indexOf("\">目录</a>") + 8,orientContent.indexOf("\">下一章</a>"));
+            temp = temp.substring(temp.indexOf("href=\"")+6);
+            nextUrl = "https://wap.2txt.cc"+temp;
+        }
+        else if (orientContent.contains(">下一页</a>")) {
+            String temp = orientContent.substring(orientContent.indexOf("\">目录</a>") + 8,orientContent.indexOf("\">下一页</a>"));
+            temp = temp.substring(temp.indexOf("href=\"")+6);
+            nextUrl = "https://wap.2txt.cc"+temp;
+        }
+        content = content.replace("关注小说微信公众号 更好的阅读小说 微信搜索名称：酷炫书坊（微信号 kuxuansf）","");
+        content = content.replaceAll("&nbsp;"," ");
+        content = content.replaceAll("<br/>","\n");
+        result.put("nextUrl", nextUrl);
+        result.put("orientContent", title + getGeneralContent(content));
         return result;
     }
 
